@@ -1,0 +1,814 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FastApply — Autonomous AI Job Application Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-primary: #07090e;
+      --bg-surface: #0f1420;
+      --bg-card: rgba(22, 30, 46, 0.7);
+      --border-color: rgba(255, 255, 255, 0.08);
+      --accent-blue: #3b82f6;
+      --accent-purple: #8b5cf6;
+      --accent-emerald: #10b981;
+      --accent-pink: #ec4899;
+      --text-main: #f3f4f6;
+      --text-muted: #9ca3af;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      background-color: var(--bg-primary);
+      color: var(--text-main);
+      min-height: 100vh;
+      display: flex; flex-direction: column;
+      background-image: 
+        radial-gradient(circle at 15% 15%, rgba(59, 130, 246, 0.12) 0%, transparent 40%),
+        radial-gradient(circle at 85% 85%, rgba(139, 92, 246, 0.12) 0%, transparent 40%);
+    }
+
+    header {
+      border-bottom: 1px solid var(--border-color);
+      background: rgba(15, 20, 32, 0.8);
+      backdrop-filter: blur(12px);
+      padding: 1rem 2rem;
+      display: flex; align-items: center; justify-content: space-between;
+      position: sticky; top: 0; z-index: 100;
+    }
+
+    .brand {
+      display: flex; align-items: center; gap: 0.75rem; font-size: 1.25rem; font-weight: 800;
+      background: linear-gradient(135deg, #60a5fa, #a78bfa);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    }
+
+    .controls-group { display: flex; align-items: center; gap: 1rem; }
+
+    .select-box, .pill-btn, .action-pill {
+      background: rgba(255, 255, 255, 0.05); border: 1px solid var(--border-color);
+      color: var(--text-main); padding: 0.5rem 1rem; border-radius: 9999px;
+      font-size: 0.875rem; font-weight: 600; cursor: pointer; transition: all 0.2s ease;
+    }
+
+    .select-box:hover, .pill-btn:hover, .action-pill:hover {
+      border-color: var(--accent-blue); background: rgba(59, 130, 246, 0.1);
+    }
+
+    .pill-btn.active, .tab-btn.active {
+      background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+      border-color: transparent; box-shadow: 0 0 15px rgba(59, 130, 246, 0.4);
+    }
+
+    main {
+      flex: 1; max-width: 1400px; width: 100%; margin: 0 auto; padding: 2rem;
+      display: flex; flex-direction: column; gap: 1.5rem;
+    }
+
+    .stats-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1.25rem;
+    }
+
+    .stat-card {
+      background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 16px;
+      padding: 1.25rem; backdrop-filter: blur(10px); display: flex; flex-direction: column; gap: 0.5rem;
+    }
+
+    .stat-title { font-size: 0.8rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+    .stat-value { font-size: 1.75rem; font-weight: 800; display: flex; align-items: baseline; gap: 0.5rem; }
+    .stat-subtext { font-size: 0.8rem; color: var(--accent-emerald); }
+
+    /* Discovery Toolbar */
+    .discovery-bar {
+      background: var(--bg-card); border: 1px solid var(--border-color);
+      border-radius: 16px; padding: 1.25rem; backdrop-filter: blur(10px);
+      display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 1rem;
+    }
+
+    .platform-btns { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+    .custom-url-group { display: flex; gap: 0.5rem; flex: 1; max-width: 550px; }
+
+    .input-text {
+      width: 100%; padding: 0.55rem 1rem; border-radius: 9999px;
+      background: rgba(255,255,255,0.05); border: 1px solid var(--border-color);
+      color: white; font-family: inherit; font-size: 0.875rem; outline: none;
+    }
+    .input-text:focus { border-color: var(--accent-blue); }
+
+    .dashboard-layout { display: grid; grid-template-columns: 420px 1fr; gap: 2rem; }
+    @media (max-width: 1024px) { .dashboard-layout { grid-template-columns: 1fr; } }
+
+    /* Visual Flow Pipeline Stepper */
+    .stepper-bar {
+      display: flex; justify-content: space-between; align-items: center;
+      background: rgba(15, 20, 32, 0.9); border: 1px solid var(--border-color);
+      border-radius: 16px; padding: 1rem 1.5rem; margin-bottom: 1rem; gap: 0.5rem;
+    }
+    .step-item {
+      display: flex; align-items: center; gap: 0.5rem; font-size: 0.8rem; font-weight: 700;
+      color: var(--text-muted); opacity: 0.5; transition: all 0.3s ease;
+    }
+    .step-item.active { color: #60a5fa; opacity: 1.0; transform: scale(1.05); }
+    .step-item.completed { color: var(--accent-emerald); opacity: 0.9; }
+    .step-num {
+      width: 28px; height: 28px; border-radius: 50%; background: rgba(255,255,255,0.1);
+      display: flex; align-items: center; justify-content: center; font-size: 0.75rem;
+    }
+    .step-item.active .step-num {
+      background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+      box-shadow: 0 0 12px rgba(59, 130, 246, 0.5);
+    }
+
+    /* Swipe Deck Section */
+    .swipe-section { display: flex; flex-direction: column; gap: 1rem; align-items: center; }
+    .swipe-card {
+      background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 24px;
+      padding: 2rem; width: 100%; height: 480px; display: flex; flex-direction: column;
+      justify-content: space-between; box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+    }
+
+    .job-badge {
+      display: inline-block; align-self: flex-start; padding: 0.25rem 0.75rem; border-radius: 9999px;
+      font-size: 0.75rem; font-weight: 700; background: rgba(59, 130, 246, 0.15); color: #60a5fa; border: 1px solid rgba(96, 165, 250, 0.3);
+    }
+
+    .job-title { font-size: 1.5rem; font-weight: 800; line-height: 1.2; margin-top: 0.5rem; }
+    .job-company { font-size: 1.1rem; color: var(--text-muted); font-weight: 600; }
+    .job-details { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 1rem; }
+    .tag { background: rgba(255, 255, 255, 0.05); padding: 0.35rem 0.75rem; border-radius: 8px; font-size: 0.8rem; color: #d1d5db; }
+
+    .swipe-actions { display: flex; justify-content: center; gap: 1.5rem; width: 100%; margin-top: 1rem; }
+    .action-btn {
+      width: 64px; height: 64px; border-radius: 50%; border: 1px solid var(--border-color);
+      background: var(--bg-card); color: white; font-size: 1.5rem; display: flex;
+      align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s ease;
+    }
+    .action-btn.skip:hover { background: rgba(239, 68, 68, 0.2); border-color: #ef4444; transform: scale(1.1); }
+    .action-btn.apply:hover { background: rgba(16, 185, 129, 0.2); border-color: #10b981; transform: scale(1.1); }
+
+    /* Terminal & Flow Section */
+    .terminal-section { display: flex; flex-direction: column; gap: 1.5rem; }
+    .panel { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 20px; padding: 1.5rem; backdrop-filter: blur(10px); }
+    .panel-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; }
+    .panel-title { font-size: 1rem; font-weight: 700; display: flex; align-items: center; gap: 0.5rem; }
+    
+    .tab-btn {
+      background: transparent; border: none; color: var(--text-muted); padding: 0.4rem 0.8rem;
+      border-radius: 8px; font-size: 0.85rem; font-weight: 700; cursor: pointer; transition: all 0.2s ease;
+    }
+    .tab-btn.active { color: white; background: rgba(255,255,255,0.1); }
+
+    .terminal-window {
+      background: #05070b; border: 1px solid rgba(255, 255, 255, 0.05);
+      border-radius: 12px; padding: 1rem; font-family: 'JetBrains Mono', monospace;
+      font-size: 0.85rem; color: #34d399; height: 300px; overflow-y: auto; display: flex; flex-direction: column; gap: 0.4rem;
+    }
+
+    .flow-window {
+      background: #05070b; border: 1px solid rgba(255, 255, 255, 0.05);
+      border-radius: 12px; padding: 1.5rem; height: 300px; display: flex; flex-direction: column;
+      justify-content: space-between; gap: 1rem;
+    }
+
+    .progress-bar-bg { width: 100%; height: 10px; background: rgba(255,255,255,0.1); border-radius: 9999px; overflow: hidden; }
+    .progress-bar-fill { height: 100%; width: 0%; background: linear-gradient(90deg, #60a5fa, #34d399); transition: width 0.4s ease; }
+
+    .history-window { max-height: 240px; overflow-y: auto; border-radius: 12px; border: 1px solid rgba(255,255,255,0.05); }
+    .history-table, .memory-table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
+    .history-table th, .history-table td, .memory-table th, .memory-table td { padding: 0.75rem 1rem; text-align: left; border-bottom: 1px solid var(--border-color); }
+    .history-table th, .memory-table th { color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; }
+
+    .status-badge { display: inline-block; padding: 0.2rem 0.5rem; border-radius: 6px; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; }
+    .status-applied { background: rgba(16, 185, 129, 0.2); color: #34d399; }
+    .status-skipped { background: rgba(239, 68, 68, 0.2); color: #f87171; }
+
+    /* Modal Popup */
+    .modal-backdrop {
+      position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+      background: rgba(0, 0, 0, 0.8); backdrop-filter: blur(8px);
+      display: none; align-items: center; justify-content: center; z-index: 1000;
+    }
+    .modal-backdrop.active { display: flex; }
+    .modal-box {
+      background: #0f1420; border: 1px solid var(--border-color);
+      border-radius: 24px; padding: 2rem; width: 90%; max-width: 750px;
+      max-height: 85vh; overflow-y: auto;
+      display: flex; flex-direction: column; gap: 1.25rem; box-shadow: 0 25px 50px rgba(0,0,0,0.5);
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="brand">
+      <span style="font-size: 1.5rem;">⚡</span> FastApply
+    </div>
+    <div class="controls-group">
+      <button class="action-pill" onclick="openMemoryModal()" style="border-color: #34d399; color: #34d399;">
+        🧠 Memory Bank
+      </button>
+
+      <button class="action-pill" onclick="openResumeModal()" style="border-color: #60a5fa; color: #60a5fa;">
+        🌐 Resume Source
+      </button>
+
+      <select id="providerSelect" class="select-box" onchange="updateConfig()">
+        <option value="ollama" selected>🦙 Ollama (Local)</option>
+        <option value="gemini">💎 Gemini 2.5 Flash</option>
+        <option value="openai">🤖 OpenAI GPT-4o</option>
+      </select>
+
+      <div style="display: flex; gap: 0.4rem;" id="modeGroup">
+        <button class="pill-btn" onclick="setMode('copilot')">🤝 Copilot</button>
+        <button class="pill-btn active" onclick="setMode('autonomous')">⚡ Autonomous</button>
+        <button class="pill-btn" onclick="setMode('stealth')">🕵️ Stealth</button>
+        <button class="pill-btn" onclick="setMode('swipe')">📱 Swipe</button>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-title">Daily Applications Cap</div>
+        <div class="stat-value" id="dailyStat">0 / 250</div>
+        <div class="stat-subtext">⚡ 0% of daily target reached</div>
+      </div>
+      <div class="stat-card" style="cursor: pointer;" onclick="openMemoryModal()" title="Click to view & edit Q&A Memory Bank">
+        <div class="stat-title">Q&A Memory Bank Cache</div>
+        <div class="stat-value" id="qaStat">0 Answers</div>
+        <div class="stat-subtext" id="qaReusesStat">0 Cache Reuses</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-title">Active AI Model</div>
+        <div class="stat-value" id="activeModelStat" style="color: #60a5fa;">Gemini</div>
+        <div class="stat-subtext">Provider Adapter Ready</div>
+      </div>
+      <div class="stat-card" style="cursor: pointer;" onclick="openResumeModal()" title="Click to edit or sync resume URL">
+        <div class="stat-title">Candidate Profile & Source</div>
+        <div class="stat-value" style="font-size: 1.25rem;" id="candidateStat">Sourabh Rustagi</div>
+        <div class="stat-subtext" id="candidateSubtext">🔗 https://iamsourabh.in/</div>
+      </div>
+    </div>
+
+    <!-- Job Discovery Toolbar -->
+    <div class="discovery-bar">
+      <div class="platform-btns">
+        <button class="action-pill" onclick="refreshPlatform('linkedin')">💼 LinkedIn Jobs</button>
+        <button class="action-pill" onclick="refreshPlatform('indeed')">🎯 Indeed.com</button>
+        <button class="action-pill" onclick="refreshPlatform('naukri')">🇮🇳 Naukri.com</button>
+        <button class="action-pill" onclick="refreshPlatform('all')" style="background: rgba(59, 130, 246, 0.15); border-color: #60a5fa;">🔄 Refresh All</button>
+      </div>
+
+      <div class="custom-url-group">
+        <input type="url" id="customCareerUrlInput" class="input-text" placeholder="https://stripe.com/jobs or company career portal..." />
+        <button class="action-pill" onclick="crawlCustomCareerUrl()" style="background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple)); border-color: transparent; white-space: nowrap;">
+          🌐 Crawl & Match Roles
+        </button>
+      </div>
+    </div>
+
+    <!-- Visual Agent Stepper Pipeline -->
+    <div class="stepper-bar">
+      <div class="step-item" id="step1">
+        <div class="step-num">1</div>
+        <span>Discovery & Scrape</span>
+      </div>
+      <span style="color: var(--border-color);">➔</span>
+      <div class="step-item" id="step2">
+        <div class="step-num">2</div>
+        <span>DOM Field Scan</span>
+      </div>
+      <span style="color: var(--border-color);">➔</span>
+      <div class="step-item" id="step3">
+        <div class="step-num">3</div>
+        <span>LLM & Q&A Memory</span>
+      </div>
+      <span style="color: var(--border-color);">➔</span>
+      <div class="step-item" id="step4">
+        <div class="step-num">4</div>
+        <span>Stealth Auto Fill</span>
+      </div>
+      <span style="color: var(--border-color);">➔</span>
+      <div class="step-item" id="step5">
+        <div class="step-num">5</div>
+        <span>Submit & Verify</span>
+      </div>
+    </div>
+
+    <div class="dashboard-layout">
+      <!-- Swipe Deck -->
+      <div class="swipe-section">
+        <div class="swipe-card" id="swipeCard">
+          <div>
+            <div class="job-badge" id="cardSalary">$180k - $240k</div>
+            <div class="job-title" id="cardTitle">Senior AI Engineer</div>
+            <div class="job-company" id="cardCompany">Google • Mountain View, CA</div>
+            <div class="job-details" id="cardTags">
+              <span class="tag">AI</span>
+              <span class="tag">Python</span>
+              <span class="tag">LLM Agents</span>
+            </div>
+          </div>
+          <div style="font-size: 0.85rem; color: var(--text-muted); line-height: 1.5;">
+            FastApply AI will automatically fill forms using candidate profile parsed from your resume source, bypass repeat questions using Q&A memory, and submit your application.
+          </div>
+        </div>
+
+        <div class="swipe-actions">
+          <button class="action-btn skip" onclick="swipeLeft()" title="Skip Job (Left)">❌</button>
+          <button class="action-btn apply" onclick="swipeRight()" title="Auto Apply (Right)">💚</button>
+        </div>
+      </div>
+
+      <!-- Live Terminal & Flow Section -->
+      <div class="terminal-section">
+        <div class="panel">
+          <div class="panel-header">
+            <div class="panel-title">
+              <span>💻</span> Agent Execution Flow & Terminal
+            </div>
+            <div style="display: flex; gap: 0.4rem;">
+              <button class="tab-btn active" id="tabTerminal" onclick="switchView('terminal')">Console Stream</button>
+              <button class="tab-btn" id="tabFlow" onclick="switchView('flow')">Visual Pipeline Flow</button>
+            </div>
+          </div>
+
+          <!-- Terminal Log View -->
+          <div class="terminal-window" id="terminalWindow">
+            <div>[System] FastApply agent core initialized. Ready for application tasks.</div>
+          </div>
+
+          <!-- Visual Workflow Diagram View -->
+          <div class="flow-window" id="flowWindow" style="display: none;">
+            <div>
+              <div style="display: flex; justify-content: space-between; font-weight: 700; font-size: 0.9rem; margin-bottom: 0.5rem;">
+                <span id="flowStepName">Ready for Task</span>
+                <span id="flowPercent">0%</span>
+              </div>
+              <div class="progress-bar-bg">
+                <div class="progress-bar-fill" id="flowProgressBar"></div>
+              </div>
+            </div>
+
+            <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--border-color); border-radius: 12px; padding: 1rem; display: flex; flex-direction: column; gap: 0.5rem;">
+              <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">Active Target Job</div>
+              <div style="font-weight: 800; font-size: 1.1rem;" id="flowJobTitle">No job currently in process</div>
+              <div style="font-size: 0.85rem; color: var(--accent-blue);" id="flowJobCompany">Select a job from feed or click Apply</div>
+            </div>
+
+            <div style="display: flex; justify-content: space-between; font-size: 0.8rem; color: var(--text-muted);">
+              <span>🌐 Browser: <strong style="color: white;">Playwright Stealth</strong></span>
+              <span>🤖 Provider: <strong style="color: #60a5fa;" id="flowProvider">GEMINI</strong></span>
+              <span>🧠 QA Engine: <strong style="color: #34d399;">SQLite Active</strong></span>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-header">
+            <div class="panel-title"><span>📋</span> Recent Applications History</div>
+          </div>
+          <div class="history-window">
+            <table class="history-table">
+              <thead>
+                <tr>
+                  <th>Company</th>
+                  <th>Role</th>
+                  <th>Mode</th>
+                  <th>Status</th>
+                  <th>Time</th>
+                </tr>
+              </thead>
+              <tbody id="historyTableBody">
+                <tr>
+                  <td colspan="5" style="text-align: center; color: var(--text-muted);">No applications processed yet.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Resume Source Modal -->
+  <div class="modal-backdrop" id="resumeModal">
+    <div class="modal-box">
+      <h2 style="font-weight: 800; font-size: 1.25rem;">📄 Candidate Resume & Profile Source</h2>
+      <p style="font-size: 0.85rem; color: var(--text-muted);">
+        Select or provide a URL to parse your resume automatically into the FastApply Q&A Memory Engine.
+      </p>
+
+      <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+        <label style="font-size: 0.8rem; font-weight: 700; color: var(--text-muted);">Resume URL:</label>
+        <input type="url" id="resumeUrlInput" class="input-text" value="https://iamsourabh.in/" placeholder="https://iamsourabh.in/" />
+      </div>
+
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 0.5rem;">
+        <button class="action-pill" onclick="closeResumeModal()" style="background: transparent;">Cancel</button>
+        <button class="action-pill" id="syncBtn" onclick="syncResumeUrl()" style="background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple)); border-color: transparent;">
+          ✨ Sync & Parse Resume
+        </button>
+      </div>
+
+      <div id="modalStatus" style="font-size: 0.8rem; color: var(--accent-emerald); display: none; text-align: center;"></div>
+    </div>
+  </div>
+
+  <!-- Q&A Memory Bank Manager Modal -->
+  <div class="modal-backdrop" id="memoryModal">
+    <div class="modal-box">
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <h2 style="font-weight: 800; font-size: 1.25rem;">🧠 Candidate Q&A Memory Bank</h2>
+        <button class="action-pill" onclick="clearAllMemories()" style="border-color: #ef4444; color: #ef4444;">
+          🧹 Reset / Clear All
+        </button>
+      </div>
+      <p style="font-size: 0.85rem; color: var(--text-muted);">
+        View, edit, and manage cached form answers used by the agent during auto-application.
+      </p>
+
+      <input type="text" id="memorySearchInput" class="input-text" onkeyup="filterMemories()" placeholder="🔍 Filter memory questions or answers..." />
+
+      <table class="memory-table">
+        <thead>
+          <tr>
+            <th>Question</th>
+            <th>Answer</th>
+            <th>Reuses</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody id="memoryTableBody">
+          <tr>
+            <td colspan="4" style="text-align: center; color: var(--text-muted);">Loading memory bank...</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div style="display: flex; justify-content: flex-end; margin-top: 0.5rem;">
+        <button class="action-pill" onclick="closeMemoryModal()" style="background: rgba(255,255,255,0.05);">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let currentJobsFeed = [];
+    let currentJobIndex = 0;
+    let cachedMemories = [];
+
+    function openResumeModal() { document.getElementById('resumeModal').classList.add('active'); }
+    function closeResumeModal() { document.getElementById('resumeModal').classList.remove('active'); }
+
+    function openMemoryModal() {
+      document.getElementById('memoryModal').classList.add('active');
+      fetchMemories();
+    }
+    function closeMemoryModal() { document.getElementById('memoryModal').classList.remove('active'); }
+
+    async function fetchMemories() {
+      try {
+        const res = await fetch('/api/memory/qa');
+        const data = await res.json();
+        cachedMemories = data.memories || [];
+        renderMemories(cachedMemories);
+      } catch (err) {}
+    }
+
+    function renderMemories(list) {
+      const tbody = document.getElementById('memoryTableBody');
+      if (!list || list.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="4" style="text-align: center; color: var(--text-muted);">No cached memories found. Sync resume or run applications to generate memories.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = list.map(m => `
+        <tr>
+          <td><strong style="color: #60a5fa;">${m.question_raw}</strong></td>
+          <td>
+            <input type="text" class="input-text" style="padding: 0.25rem 0.5rem; font-size: 0.8rem;" value="${m.answer}" id="mem_input_${m.id}" />
+          </td>
+          <td><span class="status-badge" style="background: rgba(255,255,255,0.05); color: #34d399;">${m.usage_count}x</span></td>
+          <td>
+            <div style="display: flex; gap: 0.4rem;">
+              <button onclick="saveMemoryEdit(${m.id})" title="Save Answer" style="background: transparent; border: none; cursor: pointer; font-size: 1rem;">💾</button>
+              <button onclick="deleteMemoryItem(${m.id})" title="Delete Memory" style="background: transparent; border: none; cursor: pointer; font-size: 1rem;">🗑️</button>
+            </div>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    function filterMemories() {
+      const query = document.getElementById('memorySearchInput').value.toLowerCase();
+      const filtered = cachedMemories.filter(m => 
+        m.question_raw.toLowerCase().includes(query) || 
+        m.answer.toLowerCase().includes(query)
+      );
+      renderMemories(filtered);
+    }
+
+    async function saveMemoryEdit(id) {
+      const newAnswer = document.getElementById(`mem_input_${id}`).value;
+      await fetch('/api/memory/qa/update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, answer: newAnswer }),
+      });
+      fetchMemories();
+      fetchStats();
+    }
+
+    async function deleteMemoryItem(id) {
+      await fetch(`/api/memory/qa/${id}`, { method: 'DELETE' });
+      fetchMemories();
+      fetchStats();
+    }
+
+    async function clearAllMemories() {
+      if (!confirm('Are you sure you want to clear all cached Q&A memories?')) return;
+      await fetch('/api/memory/qa/clear', { method: 'POST' });
+      fetchMemories();
+      fetchStats();
+    }
+
+    function switchView(tab) {
+      if (tab === 'terminal') {
+        document.getElementById('terminalWindow').style.display = 'flex';
+        document.getElementById('flowWindow').style.display = 'none';
+        document.getElementById('tabTerminal').classList.add('active');
+        document.getElementById('tabFlow').classList.remove('active');
+      } else {
+        document.getElementById('terminalWindow').style.display = 'none';
+        document.getElementById('flowWindow').style.display = 'flex';
+        document.getElementById('tabFlow').classList.add('active');
+        document.getElementById('tabTerminal').classList.remove('active');
+      }
+    }
+
+    async function fetchAgentStatus() {
+      try {
+        const res = await fetch('/api/agent/status');
+        const state = await res.json();
+
+        // Update Stepper Pipeline
+        for (let i = 1; i <= 5; i++) {
+          const el = document.getElementById(`step${i}`);
+          el.classList.remove('active', 'completed');
+          if (i < state.activeStep) el.classList.add('completed');
+          else if (i === state.activeStep) el.classList.add('active');
+        }
+
+        // Update Visual Flow Tab
+        document.getElementById('flowStepName').innerText = state.stepName || 'Ready for Task';
+        document.getElementById('flowPercent').innerText = `${state.progressPercent || 0}%`;
+        document.getElementById('flowProgressBar').style.width = `${state.progressPercent || 0}%`;
+
+        if (state.currentJobTitle) {
+          document.getElementById('flowJobTitle').innerText = state.currentJobTitle;
+          document.getElementById('flowJobCompany').innerText = `${state.currentCompany} • ${state.currentUrl}`;
+        }
+      } catch (err) {}
+    }
+
+    async function refreshPlatform(platform) {
+      try {
+        const res = await fetch('/api/jobs/refresh-platform', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ platform }),
+        });
+        const data = await res.json();
+        if (data.jobs) {
+          currentJobsFeed = data.jobs;
+          currentJobIndex = 0;
+          renderCard();
+          refreshAll();
+        }
+      } catch (err) {}
+    }
+
+    async function crawlCustomCareerUrl() {
+      const careerUrl = document.getElementById('customCareerUrlInput').value.trim();
+      if (!careerUrl) return;
+
+      try {
+        const res = await fetch('/api/jobs/crawl-custom-url', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ careerUrl }),
+        });
+        const data = await res.json();
+        if (data.jobs) {
+          currentJobsFeed = data.jobs;
+          currentJobIndex = 0;
+          renderCard();
+          refreshAll();
+        }
+      } catch (err) {}
+    }
+
+    async function syncResumeUrl() {
+      const url = document.getElementById('resumeUrlInput').value.trim();
+      if (!url) return;
+
+      const statusEl = document.getElementById('modalStatus');
+      const syncBtn = document.getElementById('syncBtn');
+      statusEl.style.display = 'block';
+      statusEl.style.color = '#60a5fa';
+      statusEl.innerText = '⏳ Fetching and parsing candidate profile...';
+      syncBtn.disabled = true;
+
+      try {
+        const res = await fetch('/api/resume/parse-url', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url }),
+        });
+        const data = await res.json();
+
+        if (data.success) {
+          statusEl.style.color = '#34d399';
+          statusEl.innerText = `✅ Successfully parsed resume for ${data.profile.fullName}!`;
+          setTimeout(() => {
+            closeResumeModal();
+            refreshAll();
+          }, 1500);
+        } else {
+          statusEl.style.color = '#f87171';
+          statusEl.innerText = `❌ Error parsing URL: ${data.error}`;
+        }
+      } catch (err) {
+        statusEl.style.color = '#f87171';
+        statusEl.innerText = `❌ Request failed: ${err.message}`;
+      } finally {
+        syncBtn.disabled = false;
+      }
+    }
+
+    async function fetchStats() {
+      try {
+        const res = await fetch('/api/stats');
+        const data = await res.json();
+        
+        document.getElementById('dailyStat').innerText = `${data.dailyApplied} / ${data.maxDaily}`;
+        document.getElementById('qaStat').innerText = `${data.qaTotalAnswers} Answers`;
+        document.getElementById('qaReusesStat').innerText = `${data.qaTotalReuses} Cache Reuses`;
+        document.getElementById('activeModelStat').innerText = data.activeProvider.toUpperCase();
+        document.getElementById('flowProvider').innerText = data.activeProvider.toUpperCase();
+        document.getElementById('providerSelect').value = data.activeProvider;
+        
+        if (data.candidate) {
+          document.getElementById('candidateStat').innerText = data.candidate.fullName || data.candidate.full_name;
+          if (data.candidate.resumeSourceUrl || data.candidate.portfolio_url) {
+            document.getElementById('candidateSubtext').innerText = `🔗 ${data.candidate.resumeSourceUrl || data.candidate.portfolio_url}`;
+          }
+        }
+      } catch (err) {}
+    }
+
+    async function fetchJobsFeed() {
+      try {
+        const res = await fetch('/api/swipe/feed');
+        const data = await res.json();
+        currentJobsFeed = data.jobs || [];
+        renderCard();
+      } catch (err) {}
+    }
+
+    function renderCard() {
+      if (currentJobIndex >= currentJobsFeed.length) {
+        document.getElementById('cardTitle').innerText = 'All Jobs Processed!';
+        document.getElementById('cardCompany').innerText = 'Check back later or refresh feeds.';
+        document.getElementById('cardSalary').innerText = 'Queue Empty';
+        document.getElementById('cardTags').innerHTML = '';
+        return;
+      }
+
+      const job = currentJobsFeed[currentJobIndex];
+      document.getElementById('cardTitle').innerText = job.title;
+      document.getElementById('cardCompany').innerText = `${job.company} • ${job.location}`;
+      document.getElementById('cardSalary').innerText = job.salary || '$160k - $240k';
+      document.getElementById('cardTags').innerHTML = (job.tags || []).map(t => `<span class="tag">${t}</span>`).join('');
+    }
+
+    async function swipeRight() {
+      if (currentJobIndex >= currentJobsFeed.length) return;
+      const job = currentJobsFeed[currentJobIndex];
+      await fetch('/api/swipe/right', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ job }),
+      });
+      currentJobIndex++;
+      renderCard();
+      refreshAll();
+    }
+
+    async function swipeLeft() {
+      if (currentJobIndex >= currentJobsFeed.length) return;
+      const job = currentJobsFeed[currentJobIndex];
+      await fetch('/api/swipe/left', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ job }),
+      });
+      currentJobIndex++;
+      renderCard();
+      refreshAll();
+    }
+
+    async function updateConfig() {
+      const provider = document.getElementById('providerSelect').value;
+      await fetch('/api/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ provider }),
+      });
+      refreshAll();
+    }
+
+    async function setMode(mode) {
+      document.querySelectorAll('#modeGroup .pill-btn').forEach(btn => btn.classList.remove('active'));
+      event.target.classList.add('active');
+
+      await fetch('/api/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mode }),
+      });
+      refreshAll();
+    }
+
+    async function fetchLogs() {
+      try {
+        const res = await fetch('/api/logs');
+        const data = await res.json();
+        const win = document.getElementById('terminalWindow');
+
+        const colorized = data.logs.map(l => {
+          let line = l;
+          if (line.includes('⚠️')) return `<div style="color: #fbbf24;">${line}</div>`;
+          if (line.includes('❌')) return `<div style="color: #f87171;">${line}</div>`;
+          if (line.includes('[AgentCore]')) return `<div style="color: #60a5fa;">${line}</div>`;
+          if (line.includes('[RealJobScraper]') || line.includes('[Playwright]')) return `<div style="color: #a78bfa;">${line}</div>`;
+          if (line.includes('[QAMemoryEngine]') || line.includes('🧠')) return `<div style="color: #34d399;">${line}</div>`;
+          if (line.includes('[LLMFactory]') || line.includes('🤖')) return `<div style="color: #f472b6;">${line}</div>`;
+          return `<div>${line}</div>`;
+        });
+
+        win.innerHTML = colorized.join('');
+        win.scrollTop = win.scrollHeight;
+      } catch (err) {}
+    }
+
+    async function fetchHistory() {
+      try {
+        const res = await fetch('/api/history');
+        const data = await res.json();
+        const tbody = document.getElementById('historyTableBody');
+
+        if (!data.jobs || data.jobs.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: var(--text-muted);">No applications processed yet.</td></tr>`;
+          return;
+        }
+
+        tbody.innerHTML = data.jobs.map(j => `
+          <tr>
+            <td><strong>${j.company}</strong></td>
+            <td>${j.title}</td>
+            <td><span class="status-badge" style="background: rgba(255,255,255,0.05); color: #9ca3af;">${j.apply_mode}</span></td>
+            <td><span class="status-badge status-${j.status}">${j.status}</span></td>
+            <td style="color: var(--text-muted); font-size: 0.8rem;">${new Date(j.applied_at).toLocaleTimeString()}</td>
+          </tr>
+        `).join('');
+      } catch (err) {}
+    }
+
+    function refreshAll() {
+      fetchStats();
+      fetchLogs();
+      fetchHistory();
+      fetchAgentStatus();
+    }
+
+    setInterval(fetchLogs, 1000);
+    setInterval(fetchAgentStatus, 1000);
+    setInterval(fetchStats, 3000);
+    setInterval(fetchHistory, 3000);
+
+    fetchStats();
+    fetchJobsFeed();
+    fetchLogs();
+    fetchHistory();
+    fetchAgentStatus();
+  </script>
+</body>
+</html>

@@ -250,6 +250,7 @@ export default function App() {
   const handleSwipeRight = async () => {
     if (jobIndex >= jobFeed.length) return;
     const job = jobFeed[jobIndex];
+    setShowConsole(true);
     await fetch('/api/swipe/right', {
       method: 'POST',
       headers: getHeaders(),
@@ -359,6 +360,7 @@ export default function App() {
         onOpenProfile={() => setShowProfileModal(true)}
         onOpenMemory={() => setShowMemoryModal(true)}
         onOpenResume={() => setShowResumeModal(true)}
+        onOpenSearch={() => setShowSearchModal(true)}
         onRefresh={refreshAll}
       />
 
@@ -370,19 +372,7 @@ export default function App() {
           onOpenProfile={() => setShowProfileModal(true)}
         />
 
-        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1rem' }}>
-          <button 
-            className="btn btn-primary" 
-            style={{ padding: '0.75rem 2rem', fontSize: '1.1rem', borderRadius: '9999px', boxShadow: 'var(--shadow-lg)' }}
-            onClick={() => setShowSearchModal(true)}
-          >
-            <Search size={18} style={{ marginRight: '8px' }}/> Find New Jobs
-          </button>
-        </div>
-
-        <PipelineStepper agentState={agentState} />
-
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem', alignItems: 'center' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem', alignItems: 'center', marginTop: '1rem' }}>
           <SwipeCardDeck
             job={jobFeed[jobIndex]}
             onSwipeRight={handleSwipeRight}

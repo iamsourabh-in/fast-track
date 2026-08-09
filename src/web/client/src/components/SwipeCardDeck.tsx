@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { motion, useAnimation, PanInfo } from 'framer-motion';
 import { JobPosting } from '../App';
 import { ExternalLink, Check, X } from 'lucide-react'; 
 
@@ -17,29 +18,56 @@ export const SwipeCardDeck: React.FC<SwipeCardDeckProps> = ({
 }) => {
   const targetUrl = job ? (job.url || job.job_url) : undefined;
   const [swipeDir, setSwipeDir] = useState<'left' | 'right' | null>(null);
+  const controls = useAnimation();
 
-  // Reset swipe animation state when job changes
   useEffect(() => {
     setSwipeDir(null);
-  }, [job?.id]);
+    controls.set({ x: 0, opacity: 1, rotate: 0 });
+  }, [job?.id, controls]);
 
-  const handleSwipe = (direction: 'left' | 'right') => {
+  const handleSwipe = async (direction: 'left' | 'right') => {
     if (!job || swipeDir) return;
     setSwipeDir(direction);
-    setTimeout(() => {
-      if (direction === 'right') {
-        onSwipeRight();
-      } else {
-        onSwipeLeft();
-      }
-    }, 350); // wait for animation to complete
+    
+    // Animate out
+    await controls.start({
+      x: direction === 'right' ? 300 : -300,
+      opacity: 0,
+      rotate: direction === 'right' ? 15 : -15,
+      transition: { duration: 0.3 }
+    });
+
+    if (direction === 'right') {
+      onSwipeRight();
+    } else {
+      onSwipeLeft();
+    }
+  };
+
+  const handleDragEnd = async (event: any, info: PanInfo) => {
+    const swipeThreshold = 100;
+    if (info.offset.x > swipeThreshold) {
+      handleSwipe('right');
+    } else if (info.offset.x < -swipeThreshold) {
+      handleSwipe('left');
+    } else {
+      // Snap back if not swiped far enough
+      controls.start({ x: 0, rotate: 0, transition: { type: 'spring', stiffness: 300, damping: 20 } });
+    }
   };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', alignItems: 'center', width: '100%', maxWidth: '420px', margin: '0 auto' }}>
       
-      <div 
-        className={`glass-panel ${swipeDir === 'right' ? 'animate-swipe-right' : swipeDir === 'left' ? 'animate-swipe-left' : 'animate-slide-up'}`}
+      <motion.div 
+        className="glass-panel"
+        drag={job && !swipeDir ? "x" : false}
+        dragConstraints={{ left: 0, right: 0 }}
+        dragElastic={0.7}
+        onDragEnd={handleDragEnd}
+        animate={controls}
+        initial={{ y: 20, opacity: 0 }}
+        whileInView={{ y: 0, opacity: 1 }}
         style={{ 
           width: '100%', 
           height: '520px', 
@@ -48,8 +76,9 @@ export const SwipeCardDeck: React.FC<SwipeCardDeckProps> = ({
           padding: '2rem',
           position: 'relative',
           overflow: 'hidden',
-          transition: 'transform 0.1s'
+          cursor: job && !swipeDir ? 'grab' : 'default'
         }}
+        whileTap={{ cursor: job && !swipeDir ? 'grabbing' : 'default' }}
       >
         <div style={{
           position: 'absolute',
@@ -60,7 +89,8 @@ export const SwipeCardDeck: React.FC<SwipeCardDeckProps> = ({
           background: 'var(--accent-primary)',
           opacity: 0.1,
           filter: 'blur(50px)',
-          borderRadius: '50%'
+          borderRadius: '50%',
+          pointerEvents: 'none'
         }} />
 
         {job ? (
@@ -137,7 +167,7 @@ export const SwipeCardDeck: React.FC<SwipeCardDeckProps> = ({
             </button>
           </div>
         )}
-      </div>
+      </motion.div>
 
       <div style={{ display: 'flex', gap: '2rem', justifyContent: 'center' }}>
         <button

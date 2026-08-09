@@ -17,6 +17,8 @@ interface ConsolePanelProps {
   fetchAuditLogs: () => void;
 }
 
+import { PipelineStepper } from './PipelineStepper';
+
 export const ConsolePanel: React.FC<ConsolePanelProps> = ({
   logs,
   auditLogs,
@@ -27,7 +29,11 @@ export const ConsolePanel: React.FC<ConsolePanelProps> = ({
   const [activeTab, setActiveTab] = useState<'terminal' | 'flow' | 'audit'>('terminal');
 
   return (
-    <div className="glass-panel animate-fade-in stagger-3" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', height: '100%' }}>
+    <div className="glass-panel animate-fade-in stagger-3" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.5rem', height: '100%' }}>
+      
+      {/* Pipeline Stepper moved here to declutter main layout */}
+      <PipelineStepper agentState={agentState} />
+
       <div className="flex-between" style={{ marginBottom: '1.25rem', flexWrap: 'wrap', gap: '1rem' }}>
         <div style={{ fontSize: '1.1rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#fff' }}>
           <Terminal size={18} className="text-gradient" /> Agent Console

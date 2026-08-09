@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { UserProfile } from '../App';
-import { LogOut, User, Settings, Database, BrainCircuit, FileText, ChevronDown } from 'lucide-react';
+import { LogOut, User, Settings, Database, BrainCircuit, FileText, ChevronDown, Search } from 'lucide-react';
 
 interface HeaderProps {
   user: UserProfile | null;
@@ -12,6 +12,7 @@ interface HeaderProps {
   onOpenProfile: () => void;
   onOpenMemory: () => void;
   onOpenResume: () => void;
+  onOpenSearch: () => void;
   onRefresh: () => void;
 }
 
@@ -25,6 +26,7 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenProfile,
   onOpenMemory,
   onOpenResume,
+  onOpenSearch,
   onRefresh,
 }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -154,6 +156,9 @@ export const Header: React.FC<HeaderProps> = ({
 
         {user ? (
           <>
+            <button className="btn btn-primary" onClick={onOpenSearch} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 1rem', borderRadius: '9999px' }}>
+              <Search size={16} /> Find Jobs
+            </button>
             <div style={{ position: 'relative' }} ref={menuRef}>
               <button className="btn btn-secondary" onClick={() => setIsMenuOpen(!isMenuOpen)}>
                 <User size={16} /> Profile <ChevronDown size={14} style={{ transform: isMenuOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}/>

@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { UserProfile } from '../App';
-import { LogOut, RefreshCw, User, Settings, Database, BrainCircuit, FileText } from 'lucide-react';
+import { LogOut, User, Settings, Database, BrainCircuit, FileText, ChevronDown } from 'lucide-react';
 
 interface HeaderProps {
   user: UserProfile | null;
@@ -27,6 +27,19 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenResume,
   onRefresh,
 }) => {
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setIsMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   const handleProviderChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
     const provider = e.target.value;
     await fetch('/api/config', {
@@ -81,36 +94,7 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
       </div>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
-        {user ? (
-          <>
-            <button className="btn btn-secondary" onClick={onOpenProfile}>
-              <User size={16} /> Edit Profile
-            </button>
-            <button className="btn btn-secondary" onClick={onOpenMemory}>
-              <BrainCircuit size={16} /> Memory Bank
-            </button>
-            <button className="btn btn-secondary" onClick={onOpenResume}>
-              <FileText size={16} /> Sources
-            </button>
-
-            <div style={{ width: '1px', height: '24px', background: 'var(--border-light)', margin: '0 4px' }} />
-
-            <button className="btn btn-danger" onClick={onResetDb} title="Purge database and start fresh">
-              <Database size={16} /> Reset DB
-            </button>
-            <button className="btn btn-ghost" onClick={onLogout} style={{ color: 'var(--text-muted)' }}>
-              <LogOut size={16} /> {user.fullName.split(' ')[0]}
-            </button>
-          </>
-        ) : (
-          <button className="btn btn-primary" onClick={onOpenAuth}>
-            Log In / Register
-          </button>
-        )}
-
-        <div style={{ width: '1px', height: '24px', background: 'var(--border-light)', margin: '0 4px' }} />
-
+      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
         <select
           value={activeProvider}
           onChange={handleProviderChange}
@@ -118,7 +102,7 @@ export const Header: React.FC<HeaderProps> = ({
             background: 'rgba(255, 255, 255, 0.05)',
             border: '1px solid var(--border-light)',
             color: 'var(--text-primary)',
-            padding: '0.5rem 2rem 0.5rem 1rem',
+            padding: '0.5rem 2.5rem 0.5rem 1rem',
             borderRadius: '9999px',
             fontSize: '0.85rem',
             fontWeight: 600,
@@ -130,7 +114,7 @@ export const Header: React.FC<HeaderProps> = ({
             backgroundPosition: 'right 0.7rem center',
           }}
         >
-          <option value="ollama" style={{ background: '#0f172a' }}>🦙 Ollama (Local)</option>
+          <option value="ollama" style={{ background: '#0f172a' }}>🦙 Ollama</option>
           <option value="gemini" style={{ background: '#0f172a' }}>💎 Gemini Flash</option>
           <option value="openai" style={{ background: '#0f172a' }}>🤖 OpenAI GPT-4o</option>
         </select>
@@ -165,6 +149,44 @@ export const Header: React.FC<HeaderProps> = ({
             );
           })}
         </div>
+
+        <div style={{ width: '1px', height: '24px', background: 'var(--border-light)', margin: '0 4px' }} />
+
+        {user ? (
+          <>
+            <div style={{ position: 'relative' }} ref={menuRef}>
+              <button className="btn btn-secondary" onClick={() => setIsMenuOpen(!isMenuOpen)}>
+                <User size={16} /> Profile <ChevronDown size={14} style={{ transform: isMenuOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}/>
+              </button>
+              
+              {isMenuOpen && (
+                <div className="dropdown-menu animate-fade-in">
+                  <button className="dropdown-item" onClick={() => { onOpenProfile(); setIsMenuOpen(false); }}>
+                    <User size={14} /> Edit Profile
+                  </button>
+                  <button className="dropdown-item" onClick={() => { onOpenMemory(); setIsMenuOpen(false); }}>
+                    <BrainCircuit size={14} /> Memory Bank
+                  </button>
+                  <button className="dropdown-item" onClick={() => { onOpenResume(); setIsMenuOpen(false); }}>
+                    <FileText size={14} /> Sources
+                  </button>
+                  <div className="dropdown-divider" />
+                  <button className="dropdown-item" style={{ color: 'var(--accent-danger)' }} onClick={() => { onResetDb(); setIsMenuOpen(false); }}>
+                    <Database size={14} /> Reset DB
+                  </button>
+                </div>
+              )}
+            </div>
+
+            <button className="btn btn-ghost" onClick={onLogout} style={{ color: 'var(--text-muted)' }}>
+              {user.fullName.split(' ')[0]} <LogOut size={16} />
+            </button>
+          </>
+        ) : (
+          <button className="btn btn-primary" onClick={onOpenAuth}>
+            Log In
+          </button>
+        )}
       </div>
     </header>
   );

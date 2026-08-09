@@ -68,6 +68,7 @@ export default function App() {
   const [showResumeModal, setShowResumeModal] = useState<boolean>(false);
   const [showProfileModal, setShowProfileModal] = useState<boolean>(false);
   const [showMemoryModal, setShowMemoryModal] = useState<boolean>(false);
+  const [showConsole, setShowConsole] = useState<boolean>(false);
 
   // Data State
   const [stats, setStats] = useState({
@@ -378,7 +379,7 @@ export default function App() {
 
         <PipelineStepper agentState={agentState} />
 
-        <div style={{ display: 'grid', gridTemplateColumns: '420px 1fr', gap: '2rem' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem', alignItems: 'center' }}>
           <SwipeCardDeck
             job={jobFeed[jobIndex]}
             onSwipeRight={handleSwipeRight}
@@ -386,14 +387,25 @@ export default function App() {
             onOpenResumeModal={() => setShowResumeModal(true)}
           />
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-            <ConsolePanel
-              logs={logs}
-              auditLogs={auditLogs}
-              agentState={agentState}
-              activeProvider={stats.activeProvider}
-              fetchAuditLogs={fetchAuditLogs}
-            />
+          <div style={{ width: '100%', maxWidth: '1000px', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+              <button 
+                className="btn btn-secondary" 
+                onClick={() => setShowConsole(!showConsole)}
+              >
+                {showConsole ? 'Hide Agent Console' : 'Show Agent Console'}
+              </button>
+            </div>
+            
+            {showConsole && (
+              <ConsolePanel
+                logs={logs}
+                auditLogs={auditLogs}
+                agentState={agentState}
+                activeProvider={stats.activeProvider}
+                fetchAuditLogs={fetchAuditLogs}
+              />
+            )}
 
             <HistoryTable history={history} />
           </div>

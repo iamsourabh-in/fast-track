@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { JobPosting } from '../App';
-import { ExternalLink, Check, X } from 'lucide-react'; // I'll use Lucide icons for better UX
+import { ExternalLink, Check, X } from 'lucide-react'; 
 
 interface SwipeCardDeckProps {
   job: JobPosting | undefined;
@@ -16,20 +16,41 @@ export const SwipeCardDeck: React.FC<SwipeCardDeckProps> = ({
   onOpenResumeModal,
 }) => {
   const targetUrl = job ? (job.url || job.job_url) : undefined;
+  const [swipeDir, setSwipeDir] = useState<'left' | 'right' | null>(null);
+
+  // Reset swipe animation state when job changes
+  useEffect(() => {
+    setSwipeDir(null);
+  }, [job?.id]);
+
+  const handleSwipe = (direction: 'left' | 'right') => {
+    if (!job || swipeDir) return;
+    setSwipeDir(direction);
+    setTimeout(() => {
+      if (direction === 'right') {
+        onSwipeRight();
+      } else {
+        onSwipeLeft();
+      }
+    }, 350); // wait for animation to complete
+  };
 
   return (
-    <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', alignItems: 'center', width: '100%' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', alignItems: 'center', width: '100%', maxWidth: '420px', margin: '0 auto' }}>
       
-      <div className="glass-panel animate-slide-up" style={{ 
-        width: '100%', 
-        height: '520px', 
-        display: 'flex', 
-        flexDirection: 'column', 
-        padding: '2rem',
-        position: 'relative',
-        overflow: 'hidden'
-      }}>
-        {/* Subtle background glow for the card */}
+      <div 
+        className={`glass-panel ${swipeDir === 'right' ? 'animate-swipe-right' : swipeDir === 'left' ? 'animate-swipe-left' : 'animate-slide-up'}`}
+        style={{ 
+          width: '100%', 
+          height: '520px', 
+          display: 'flex', 
+          flexDirection: 'column', 
+          padding: '2rem',
+          position: 'relative',
+          overflow: 'hidden',
+          transition: 'transform 0.1s'
+        }}
+      >
         <div style={{
           position: 'absolute',
           top: '-50px',
@@ -120,8 +141,8 @@ export const SwipeCardDeck: React.FC<SwipeCardDeckProps> = ({
 
       <div style={{ display: 'flex', gap: '2rem', justifyContent: 'center' }}>
         <button
-          onClick={onSwipeLeft}
-          disabled={!job}
+          onClick={() => handleSwipe('left')}
+          disabled={!job || swipeDir !== null}
           style={{
             width: '72px',
             height: '72px',
@@ -132,20 +153,20 @@ export const SwipeCardDeck: React.FC<SwipeCardDeckProps> = ({
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            cursor: job ? 'pointer' : 'not-allowed',
-            opacity: job ? 1 : 0.5,
+            cursor: job && !swipeDir ? 'pointer' : 'not-allowed',
+            opacity: job && !swipeDir ? 1 : 0.5,
             transition: 'all 0.2s',
             boxShadow: 'var(--shadow-lg)'
           }}
-          onMouseOver={(e) => { if(job) { e.currentTarget.style.background = 'rgba(239, 68, 68, 0.1)'; e.currentTarget.style.transform = 'scale(1.05)'; } }}
-          onMouseOut={(e) => { if(job) { e.currentTarget.style.background = 'var(--bg-surface)'; e.currentTarget.style.transform = 'scale(1)'; } }}
+          onMouseOver={(e) => { if(job && !swipeDir) { e.currentTarget.style.background = 'rgba(239, 68, 68, 0.1)'; e.currentTarget.style.transform = 'scale(1.05)'; } }}
+          onMouseOut={(e) => { if(job && !swipeDir) { e.currentTarget.style.background = 'var(--bg-surface)'; e.currentTarget.style.transform = 'scale(1)'; } }}
         >
           <X size={32} strokeWidth={3} />
         </button>
 
         <button
-          onClick={onSwipeRight}
-          disabled={!job}
+          onClick={() => handleSwipe('right')}
+          disabled={!job || swipeDir !== null}
           style={{
             width: '72px',
             height: '72px',
@@ -156,13 +177,13 @@ export const SwipeCardDeck: React.FC<SwipeCardDeckProps> = ({
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            cursor: job ? 'pointer' : 'not-allowed',
-            opacity: job ? 1 : 0.5,
+            cursor: job && !swipeDir ? 'pointer' : 'not-allowed',
+            opacity: job && !swipeDir ? 1 : 0.5,
             transition: 'all 0.2s',
             boxShadow: 'var(--shadow-lg)'
           }}
-          onMouseOver={(e) => { if(job) { e.currentTarget.style.background = 'rgba(16, 185, 129, 0.1)'; e.currentTarget.style.transform = 'scale(1.05)'; } }}
-          onMouseOut={(e) => { if(job) { e.currentTarget.style.background = 'var(--bg-surface)'; e.currentTarget.style.transform = 'scale(1)'; } }}
+          onMouseOver={(e) => { if(job && !swipeDir) { e.currentTarget.style.background = 'rgba(16, 185, 129, 0.1)'; e.currentTarget.style.transform = 'scale(1.05)'; } }}
+          onMouseOut={(e) => { if(job && !swipeDir) { e.currentTarget.style.background = 'var(--bg-surface)'; e.currentTarget.style.transform = 'scale(1)'; } }}
         >
           <Check size={32} strokeWidth={3} />
         </button>

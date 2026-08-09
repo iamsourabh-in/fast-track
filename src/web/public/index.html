@@ -222,6 +222,10 @@
       <span style="font-size: 1.5rem;">⚡</span> FastApply Pro <span style="font-size: 0.7rem; background: rgba(59,130,246,0.2); color: #60a5fa; border: 1px solid rgba(96,165,250,0.3); padding: 0.15rem 0.5rem; border-radius: 9999px;">SaaS Enterprise</span>
     </div>
     <div class="controls-group">
+      <button class="action-pill" id="userAuthBtn" onclick="handleAuthClick()" style="border-color: #ec4899; color: #ec4899;">
+        👤 sourabh.rustagi@hotmail.com (Logout)
+      </button>
+
       <button class="action-pill" onclick="openProfileModal()" style="border-color: #a78bfa; color: #a78bfa;">
         👤 Edit Profile
       </button>
@@ -503,6 +507,55 @@
           💾 Save Candidate Profile
         </button>
       </div>
+  <!-- Login & Registration Modal -->
+  <div class="modal-backdrop" id="authModal">
+    <div class="modal-box" style="max-width: 450px;">
+      <h2 style="font-weight: 800; font-size: 1.25rem; text-align: center; margin-bottom: 0.5rem;">🔑 SaaS Account Authentication</h2>
+      
+      <div style="display: flex; gap: 0.5rem; justify-content: center; margin-bottom: 0.5rem;">
+        <button class="pill-btn active" id="tabLoginBtn" onclick="switchAuthTab('login')">🔑 Log In</button>
+        <button class="pill-btn" id="tabRegisterBtn" onclick="switchAuthTab('register')">📝 Register</button>
+      </div>
+
+      <!-- Login Form -->
+      <div id="loginFormSection" style="display: flex; flex-direction: column; gap: 1rem;">
+        <div>
+          <label style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted);">Email Address:</label>
+          <input type="email" id="loginEmail" class="input-text" value="sourabh.rustagi@hotmail.com" placeholder="user@example.com" />
+        </div>
+        <div>
+          <label style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted);">Password:</label>
+          <input type="password" id="loginPassword" class="input-text" value="password123" placeholder="••••••••" />
+        </div>
+        <button class="action-pill" onclick="performLogin()" style="background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple)); border-color: transparent; font-weight: 700; margin-top: 0.5rem;">
+          🚀 Log In to FastApply
+        </button>
+      </div>
+
+      <!-- Register Form -->
+      <div id="registerFormSection" style="display: none; flex-direction: column; gap: 1rem;">
+        <div>
+          <label style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted);">Full Name:</label>
+          <input type="text" id="regFullName" class="input-text" placeholder="Sourabh Rustagi" />
+        </div>
+        <div>
+          <label style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted);">Email Address:</label>
+          <input type="email" id="regEmail" class="input-text" placeholder="user@example.com" />
+        </div>
+        <div>
+          <label style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted);">Password:</label>
+          <input type="password" id="regPassword" class="input-text" placeholder="••••••••" />
+        </div>
+        <button class="action-pill" onclick="performRegister()" style="background: linear-gradient(135deg, var(--accent-emerald), #059669); border-color: transparent; font-weight: 700; margin-top: 0.5rem;">
+          ✨ Create SaaS Account
+        </button>
+      </div>
+
+      <div id="authStatusMsg" style="font-size: 0.8rem; text-align: center; display: none; margin-top: 0.5rem;"></div>
+
+      <div style="display: flex; justify-content: flex-end; margin-top: 0.5rem;">
+        <button class="action-pill" onclick="closeAuthModal()" style="background: transparent;">Close</button>
+      </div>
     </div>
   </div>
 
@@ -548,6 +601,144 @@
     let currentJobIndex = 0;
     let cachedMemories = [];
     let selectedPdfFile = null;
+    let currentUserToken = localStorage.getItem('fastapply_token') || '';
+    let currentUserProfile = null;
+
+    function getAuthHeaders() {
+      const headers = { 'Content-Type': 'application/json' };
+      if (currentUserToken) headers['Authorization'] = `Bearer ${currentUserToken}`;
+      return headers;
+    }
+
+    function handleAuthClick() {
+      if (currentUserToken && currentUserProfile) {
+        if (confirm(`Logged in as ${currentUserProfile.fullName} (${currentUserProfile.email}). Do you want to log out?`)) {
+          logoutUser();
+        }
+      } else {
+        openAuthModal();
+      }
+    }
+
+    function openAuthModal() { document.getElementById('authModal').classList.add('active'); }
+    function closeAuthModal() { document.getElementById('authModal').classList.remove('active'); }
+
+    function switchAuthTab(tab) {
+      document.getElementById('loginFormSection').style.display = tab === 'login' ? 'flex' : 'none';
+      document.getElementById('registerFormSection').style.display = tab === 'register' ? 'flex' : 'none';
+      document.getElementById('tabLoginBtn').classList.toggle('active', tab === 'login');
+      document.getElementById('tabRegisterBtn').classList.toggle('active', tab === 'register');
+      document.getElementById('authStatusMsg').style.display = 'none';
+    }
+
+    async function performLogin() {
+      const email = document.getElementById('loginEmail').value.trim();
+      const password = document.getElementById('loginPassword').value.trim();
+      const statusEl = document.getElementById('authStatusMsg');
+
+      if (!email || !password) {
+        statusEl.style.display = 'block';
+        statusEl.style.color = '#f87171';
+        statusEl.innerText = 'Please enter both email and password.';
+        return;
+      }
+
+      try {
+        const res = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password }),
+        });
+        const data = await res.json();
+        if (data.success) {
+          currentUserToken = data.token;
+          currentUserProfile = data.user;
+          localStorage.setItem('fastapply_token', data.token);
+          statusEl.style.display = 'block';
+          statusEl.style.color = '#34d399';
+          statusEl.innerText = `✅ Welcome back, ${data.user.fullName}!`;
+          updateAuthUserUI();
+          setTimeout(() => {
+            closeAuthModal();
+            refreshAll();
+          }, 1200);
+        } else {
+          statusEl.style.display = 'block';
+          statusEl.style.color = '#f87171';
+          statusEl.innerText = `❌ Login failed: ${data.error}`;
+        }
+      } catch (err) {
+        statusEl.style.display = 'block';
+        statusEl.style.color = '#f87171';
+        statusEl.innerText = `❌ Auth error: ${err.message}`;
+      }
+    }
+
+    async function performRegister() {
+      const fullName = document.getElementById('regFullName').value.trim();
+      const email = document.getElementById('regEmail').value.trim();
+      const password = document.getElementById('regPassword').value.trim();
+      const statusEl = document.getElementById('authStatusMsg');
+
+      if (!fullName || !email || !password) {
+        statusEl.style.display = 'block';
+        statusEl.style.color = '#f87171';
+        statusEl.innerText = 'Please complete all registration fields.';
+        return;
+      }
+
+      try {
+        const res = await fetch('/api/auth/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ fullName, email, password }),
+        });
+        const data = await res.json();
+        if (data.success) {
+          currentUserToken = data.token;
+          currentUserProfile = data.user;
+          localStorage.setItem('fastapply_token', data.token);
+          statusEl.style.display = 'block';
+          statusEl.style.color = '#34d399';
+          statusEl.innerText = `✅ Account created for ${data.user.fullName}!`;
+          updateAuthUserUI();
+          setTimeout(() => {
+            closeAuthModal();
+            refreshAll();
+          }, 1200);
+        } else {
+          statusEl.style.display = 'block';
+          statusEl.style.color = '#f87171';
+          statusEl.innerText = `❌ Registration failed: ${data.error}`;
+        }
+      } catch (err) {
+        statusEl.style.display = 'block';
+        statusEl.style.color = '#f87171';
+        statusEl.innerText = `❌ Auth error: ${err.message}`;
+      }
+    }
+
+    function logoutUser() {
+      currentUserToken = '';
+      currentUserProfile = null;
+      localStorage.removeItem('fastapply_token');
+      updateAuthUserUI();
+      refreshAll();
+      openAuthModal();
+    }
+
+    function updateAuthUserUI() {
+      const btn = document.getElementById('userAuthBtn');
+      if (currentUserProfile) {
+        btn.innerHTML = `👤 ${currentUserProfile.fullName} (Logout)`;
+        btn.style.borderColor = '#34d399';
+        btn.style.color = '#34d399';
+      } else {
+        btn.innerHTML = `🔑 Log In / Register`;
+        btn.style.borderColor = '#ec4899';
+        btn.style.color = '#ec4899';
+      }
+    }
 
     function openResumeModal() { document.getElementById('resumeModal').classList.add('active'); }
     function closeResumeModal() { document.getElementById('resumeModal').classList.remove('active'); }
@@ -981,11 +1172,29 @@
     setInterval(fetchStats, 3000);
     setInterval(fetchHistory, 3000);
 
+    async function checkAuthOnLoad() {
+      if (currentUserToken) {
+        try {
+          const res = await fetch('/api/auth/me', { headers: getAuthHeaders() });
+          const data = await res.json();
+          if (data.user) {
+            currentUserProfile = data.user;
+            updateAuthUserUI();
+          } else {
+            logoutUser();
+          }
+        } catch (e) { updateAuthUserUI(); }
+      } else {
+        updateAuthUserUI();
+      }
+    }
+
     fetchStats();
     fetchJobsFeed();
     fetchLogs();
     fetchHistory();
     fetchAgentStatus();
+    checkAuthOnLoad();
   </script>
 </body>
 </html>

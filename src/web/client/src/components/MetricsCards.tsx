@@ -1,5 +1,6 @@
 import React from 'react';
 import { CandidateFacts } from '../App';
+import { Target, Brain, Cpu, UserCircle } from 'lucide-react';
 
 interface MetricsCardsProps {
   stats: {
@@ -24,100 +25,74 @@ export const MetricsCards: React.FC<MetricsCardsProps> = ({
   const percent = Math.min(100, Math.round((stats.dailyApplied / stats.maxDaily) * 100));
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '1.25rem' }}>
-      <div style={{
-        background: 'rgba(22, 30, 46, 0.75)',
-        border: '1px solid rgba(255, 255, 255, 0.08)',
-        borderRadius: '16px',
-        padding: '1.25rem',
-        backdropFilter: 'blur(10px)',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '0.5rem'
-      }}>
-        <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-          Daily Applications Cap
+    <div className="animate-slide-up stagger-1" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '1.25rem' }}>
+      
+      <div className="glass-card" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+        <div className="flex-between">
+          <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            Daily Applications
+          </div>
+          <Target size={16} color="var(--accent-primary)" />
         </div>
-        <div style={{ fontSize: '1.75rem', fontWeight: 800 }}>
-          {stats.dailyApplied} / {stats.maxDaily}
+        <div style={{ fontSize: '2rem', fontWeight: 800, color: '#fff', lineHeight: 1 }}>
+          {stats.dailyApplied} <span style={{ fontSize: '1rem', color: 'var(--text-muted)' }}>/ {stats.maxDaily}</span>
         </div>
-        <div style={{ fontSize: '0.8rem', color: '#10b981' }}>
-          ⚡ {percent}% of daily target reached
+        
+        {/* Progress bar */}
+        <div style={{ width: '100%', height: '6px', background: 'rgba(255,255,255,0.1)', borderRadius: '999px', overflow: 'hidden', marginTop: '0.25rem' }}>
+          <div style={{ height: '100%', width: `${percent}%`, background: 'var(--gradient-primary)', transition: 'width 1s ease-in-out' }} />
+        </div>
+        
+        <div style={{ fontSize: '0.8rem', color: 'var(--accent-success)', fontWeight: 600 }}>
+          {percent}% of daily target reached
         </div>
       </div>
 
-      <div
-        onClick={onOpenMemory}
-        title="Click to view & edit Q&A Memory Bank"
-        style={{
-          background: 'rgba(22, 30, 46, 0.75)',
-          border: '1px solid rgba(255, 255, 255, 0.08)',
-          borderRadius: '16px',
-          padding: '1.25rem',
-          backdropFilter: 'blur(10px)',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '0.5rem',
-          cursor: 'pointer'
-        }}
-      >
-        <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-          Q&A Memory Bank Cache
+      <div className="glass-card" onClick={onOpenMemory} style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '0.75rem', cursor: 'pointer' }}>
+        <div className="flex-between">
+          <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            Q&A Memory Cache
+          </div>
+          <Brain size={16} color="var(--accent-secondary)" />
         </div>
-        <div style={{ fontSize: '1.75rem', fontWeight: 800 }}>
-          {stats.qaTotalAnswers} Answers
+        <div style={{ fontSize: '2rem', fontWeight: 800, color: '#fff', lineHeight: 1 }}>
+          {stats.qaTotalAnswers} <span style={{ fontSize: '1rem', color: 'var(--text-muted)' }}>Answers</span>
         </div>
-        <div style={{ fontSize: '0.8rem', color: '#34d399' }}>
+        <div style={{ fontSize: '0.8rem', color: 'var(--accent-success)', fontWeight: 600, marginTop: 'auto' }}>
           🧠 {stats.qaTotalReuses} Cache Reuses
         </div>
       </div>
 
-      <div style={{
-        background: 'rgba(22, 30, 46, 0.75)',
-        border: '1px solid rgba(255, 255, 255, 0.08)',
-        borderRadius: '16px',
-        padding: '1.25rem',
-        backdropFilter: 'blur(10px)',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '0.5rem'
-      }}>
-        <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-          Active AI Model
+      <div className="glass-card" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+        <div className="flex-between">
+          <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            Active AI Engine
+          </div>
+          <Cpu size={16} color="var(--accent-success)" />
         </div>
-        <div style={{ fontSize: '1.75rem', fontWeight: 800, color: '#60a5fa', textTransform: 'uppercase' }}>
+        <div style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--accent-primary)', textTransform: 'uppercase', lineHeight: 1.1 }}>
           {stats.activeProvider}
         </div>
-        <div style={{ fontSize: '0.8rem', color: '#9ca3af' }}>
+        <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600, marginTop: 'auto' }}>
           Provider Adapter Ready
         </div>
       </div>
 
-      <div
-        onClick={onOpenProfile}
-        title="Click to open Candidate Profile Editor"
-        style={{
-          background: 'rgba(22, 30, 46, 0.75)',
-          border: '1px solid rgba(255, 255, 255, 0.08)',
-          borderRadius: '16px',
-          padding: '1.25rem',
-          backdropFilter: 'blur(10px)',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '0.5rem',
-          cursor: 'pointer'
-        }}
-      >
-        <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-          Candidate Profile & Contact
+      <div className="glass-card" onClick={onOpenProfile} style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '0.75rem', cursor: 'pointer' }}>
+        <div className="flex-between">
+          <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            Candidate Profile
+          </div>
+          <UserCircle size={16} color="var(--accent-primary)" />
         </div>
-        <div style={{ fontSize: '1.2rem', fontWeight: 800 }}>
-          {candidate ? candidate.fullName : 'Sourabh Rustagi'}
+        <div style={{ fontSize: '1.2rem', fontWeight: 800, color: '#fff', lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+          {candidate ? candidate.fullName : 'Not Configured'}
         </div>
-        <div style={{ fontSize: '0.8rem', color: '#a78bfa' }}>
-          {candidate ? candidate.email : 'sourabh.rustagi@hotmail.com'}
+        <div style={{ fontSize: '0.85rem', color: 'var(--accent-secondary)', fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginTop: 'auto' }}>
+          {candidate ? candidate.email : 'Click to setup'}
         </div>
       </div>
+      
     </div>
   );
 };

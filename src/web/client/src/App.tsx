@@ -317,13 +317,10 @@ export default function App() {
           onRefresh={refreshAll}
         />
         <main style={{ flex: 1, maxWidth: '700px', width: '100%', margin: '4rem auto', padding: '2rem' }}>
-          <div style={{
-            background: 'rgba(22, 30, 46, 0.75)',
-            border: '1px solid rgba(255, 255, 255, 0.08)',
-            borderRadius: '24px',
-            padding: '2.5rem',
-            backdropFilter: 'blur(10px)',
-            textAlign: 'center'
+          <div className="glass-panel animate-slide-up" style={{
+            padding: '3rem 2.5rem',
+            textAlign: 'center',
+            position: 'relative'
           }}>
             <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>📄</div>
             <h2 style={{ fontWeight: 800, fontSize: '1.5rem', marginBottom: '0.75rem' }}>

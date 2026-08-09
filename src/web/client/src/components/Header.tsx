@@ -1,5 +1,6 @@
 import React from 'react';
 import { UserProfile } from '../App';
+import { LogOut, RefreshCw, User, Settings, Database, BrainCircuit, FileText } from 'lucide-react';
 
 interface HeaderProps {
   user: UserProfile | null;
@@ -47,183 +48,122 @@ export const Header: React.FC<HeaderProps> = ({
 
   return (
     <header style={{
-      borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
-      background: 'rgba(15, 20, 32, 0.85)',
-      backdropFilter: 'blur(12px)',
+      background: 'rgba(9, 9, 11, 0.85)',
+      backdropFilter: 'blur(16px)',
+      WebkitBackdropFilter: 'blur(16px)',
+      borderBottom: '1px solid var(--border-light)',
       padding: '1rem 2rem',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'space-between',
       position: 'sticky',
       top: 0,
-      zIndex: 100
+      zIndex: 100,
+      boxShadow: '0 4px 20px rgba(0,0,0,0.4)'
     }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', fontSize: '1.25rem', fontWeight: 800 }}>
-        <span style={{ fontSize: '1.5rem' }}>⚡</span>
-        <span style={{
-          background: 'linear-gradient(135deg, #60a5fa, #a78bfa)',
-          WebkitBackgroundClip: 'text',
-          WebkitTextFillColor: 'transparent'
+      <div className="flex-center" style={{ gap: '0.75rem' }}>
+        <div style={{
+          width: '36px', height: '36px',
+          background: 'var(--gradient-primary)',
+          borderRadius: '10px',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          boxShadow: '0 0 15px rgba(99, 102, 241, 0.4)'
         }}>
-          FastApply Pro
-        </span>
-        <span style={{
-          fontSize: '0.7rem',
-          background: 'rgba(59, 130, 246, 0.2)',
-          color: '#60a5fa',
-          border: '1px solid rgba(96, 165, 250, 0.3)',
-          padding: '0.15rem 0.5rem',
-          borderRadius: '9999px'
-        }}>
-          SaaS Enterprise
-        </span>
+          <Settings size={20} color="white" />
+        </div>
+        <div>
+          <h1 style={{ fontSize: '1.25rem', fontWeight: 800, margin: 0, lineHeight: 1.2 }}>
+            <span className="text-gradient">FastApply</span> Pro
+          </h1>
+          <span className="badge badge-primary" style={{ fontSize: '0.65rem', padding: '0.15rem 0.4rem', marginTop: '2px' }}>
+            Enterprise Edition
+          </span>
+        </div>
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
         {user ? (
           <>
-            <button
-              onClick={onLogout}
-              style={{
-                background: 'rgba(236, 72, 153, 0.1)',
-                border: '1px solid #ec4899',
-                color: '#ec4899',
-                padding: '0.5rem 1rem',
-                borderRadius: '9999px',
-                fontSize: '0.85rem',
-                fontWeight: 600,
-                cursor: 'pointer'
-              }}
-            >
-              👤 {user.fullName} (Logout)
+            <button className="btn btn-secondary" onClick={onOpenProfile}>
+              <User size={16} /> Edit Profile
+            </button>
+            <button className="btn btn-secondary" onClick={onOpenMemory}>
+              <BrainCircuit size={16} /> Memory Bank
+            </button>
+            <button className="btn btn-secondary" onClick={onOpenResume}>
+              <FileText size={16} /> Sources
             </button>
 
-            <button
-              onClick={onResetDb}
-              title="Purge database tables and start completely fresh"
-              style={{
-                background: 'rgba(239, 68, 68, 0.1)',
-                border: '1px solid #ef4444',
-                color: '#ef4444',
-                padding: '0.5rem 1rem',
-                borderRadius: '9999px',
-                fontSize: '0.85rem',
-                fontWeight: 600,
-                cursor: 'pointer'
-              }}
-            >
-              💣 Reset DB & Start Fresh
+            <div style={{ width: '1px', height: '24px', background: 'var(--border-light)', margin: '0 4px' }} />
+
+            <button className="btn btn-danger" onClick={onResetDb} title="Purge database and start fresh">
+              <Database size={16} /> Reset DB
+            </button>
+            <button className="btn btn-ghost" onClick={onLogout} style={{ color: 'var(--text-muted)' }}>
+              <LogOut size={16} /> {user.fullName.split(' ')[0]}
             </button>
           </>
         ) : (
-          <button
-            onClick={onOpenAuth}
-            style={{
-              background: 'rgba(236, 72, 153, 0.1)',
-              border: '1px solid #ec4899',
-              color: '#ec4899',
-              padding: '0.5rem 1rem',
-              borderRadius: '9999px',
-              fontSize: '0.85rem',
-              fontWeight: 600,
-              cursor: 'pointer'
-            }}
-          >
-            🔑 Log In / Register
+          <button className="btn btn-primary" onClick={onOpenAuth}>
+            Log In / Register
           </button>
         )}
 
-        <button
-          onClick={onOpenProfile}
-          style={{
-            background: 'rgba(167, 139, 250, 0.1)',
-            border: '1px solid #a78bfa',
-            color: '#a78bfa',
-            padding: '0.5rem 1rem',
-            borderRadius: '9999px',
-            fontSize: '0.85rem',
-            fontWeight: 600,
-            cursor: 'pointer'
-          }}
-        >
-          👤 Edit Profile
-        </button>
-
-        <button
-          onClick={onOpenMemory}
-          style={{
-            background: 'rgba(52, 211, 153, 0.1)',
-            border: '1px solid #34d399',
-            color: '#34d399',
-            padding: '0.5rem 1rem',
-            borderRadius: '9999px',
-            fontSize: '0.85rem',
-            fontWeight: 600,
-            cursor: 'pointer'
-          }}
-        >
-          🧠 Memory Bank
-        </button>
-
-        <button
-          onClick={onOpenResume}
-          style={{
-            background: 'rgba(96, 165, 250, 0.1)',
-            border: '1px solid #60a5fa',
-            color: '#60a5fa',
-            padding: '0.5rem 1rem',
-            borderRadius: '9999px',
-            fontSize: '0.85rem',
-            fontWeight: 600,
-            cursor: 'pointer'
-          }}
-        >
-          📄 PDF & Website Source
-        </button>
+        <div style={{ width: '1px', height: '24px', background: 'var(--border-light)', margin: '0 4px' }} />
 
         <select
           value={activeProvider}
           onChange={handleProviderChange}
           style={{
             background: 'rgba(255, 255, 255, 0.05)',
-            border: '1px solid rgba(255, 255, 255, 0.08)',
-            color: 'white',
-            padding: '0.5rem 1rem',
+            border: '1px solid var(--border-light)',
+            color: 'var(--text-primary)',
+            padding: '0.5rem 2rem 0.5rem 1rem',
             borderRadius: '9999px',
             fontSize: '0.85rem',
             fontWeight: 600,
-            cursor: 'pointer'
+            cursor: 'pointer',
+            appearance: 'none',
+            outline: 'none',
+            backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E")`,
+            backgroundRepeat: 'no-repeat',
+            backgroundPosition: 'right 0.7rem center',
           }}
         >
-          <option value="ollama">🦙 Ollama (Local)</option>
-          <option value="gemini">💎 Gemini 2.5 Flash</option>
-          <option value="openai">🤖 OpenAI GPT-4o</option>
+          <option value="ollama" style={{ background: '#0f172a' }}>🦙 Ollama (Local)</option>
+          <option value="gemini" style={{ background: '#0f172a' }}>💎 Gemini Flash</option>
+          <option value="openai" style={{ background: '#0f172a' }}>🤖 OpenAI GPT-4o</option>
         </select>
 
-        <div style={{ display: 'flex', gap: '0.4rem' }}>
-          {['copilot', 'autonomous', 'stealth', 'swipe'].map((m) => (
-            <button
-              key={m}
-              onClick={() => handleModeChange(m)}
-              style={{
-                background: activeMode === m ? 'linear-gradient(135deg, #3b82f6, #8b5cf6)' : 'rgba(255, 255, 255, 0.05)',
-                border: '1px solid rgba(255, 255, 255, 0.08)',
-                color: 'white',
-                padding: '0.5rem 0.8rem',
-                borderRadius: '9999px',
-                fontSize: '0.8rem',
-                fontWeight: 600,
-                cursor: 'pointer',
-                textTransform: 'capitalize'
-              }}
-            >
-              {m === 'copilot' && '🤝 '}
-              {m === 'autonomous' && '⚡ '}
-              {m === 'stealth' && '🕵️ '}
-              {m === 'swipe' && '📱 '}
-              {m}
-            </button>
-          ))}
+        <div style={{ display: 'flex', gap: '0.25rem', background: 'rgba(255,255,255,0.03)', padding: '0.25rem', borderRadius: '9999px', border: '1px solid var(--border-light)' }}>
+          {['copilot', 'autonomous', 'stealth', 'swipe'].map((m) => {
+            const isActive = activeMode === m;
+            return (
+              <button
+                key={m}
+                onClick={() => handleModeChange(m)}
+                style={{
+                  background: isActive ? 'var(--gradient-primary)' : 'transparent',
+                  border: 'none',
+                  color: isActive ? 'white' : 'var(--text-secondary)',
+                  padding: '0.4rem 0.8rem',
+                  borderRadius: '9999px',
+                  fontSize: '0.8rem',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  textTransform: 'capitalize',
+                  transition: 'all 0.2s',
+                  boxShadow: isActive ? '0 2px 8px rgba(99, 102, 241, 0.4)' : 'none'
+                }}
+              >
+                {m === 'copilot' && '🤝 '}
+                {m === 'autonomous' && '⚡ '}
+                {m === 'stealth' && '🕵️ '}
+                {m === 'swipe' && '📱 '}
+                {m}
+              </button>
+            );
+          })}
         </div>
       </div>
     </header>

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { UserProfile } from '../App';
+import { Key, UserPlus, LogIn, Mail, Lock, User, X } from 'lucide-react';
 
 interface AuthModalProps {
   onClose?: () => void;
@@ -28,15 +29,15 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose, onAuthSuccess, hi
       });
       const data = await res.json();
       if (data.success) {
-        setStatusMsg({ text: `✅ Welcome back, ${data.user.fullName}!`, isError: false });
+        setStatusMsg({ text: `Welcome back, ${data.user.fullName}!`, isError: false });
         setTimeout(() => {
           onAuthSuccess(data.token, data.user);
         }, 1000);
       } else {
-        setStatusMsg({ text: `❌ Login failed: ${data.error}`, isError: true });
+        setStatusMsg({ text: `Login failed: ${data.error}`, isError: true });
       }
     } catch (err: any) {
-      setStatusMsg({ text: `❌ Auth error: ${err.message}`, isError: true });
+      setStatusMsg({ text: `Auth error: ${err.message}`, isError: true });
     }
   };
 
@@ -54,228 +55,187 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose, onAuthSuccess, hi
       });
       const data = await res.json();
       if (data.success) {
-        setStatusMsg({ text: `✅ Account created for ${data.user.fullName}!`, isError: false });
+        setStatusMsg({ text: `Account created for ${data.user.fullName}!`, isError: false });
         setTimeout(() => {
           onAuthSuccess(data.token, data.user);
         }, 1000);
       } else {
-        setStatusMsg({ text: `❌ Registration failed: ${data.error}`, isError: true });
+        setStatusMsg({ text: `Registration failed: ${data.error}`, isError: true });
       }
     } catch (err: any) {
-      setStatusMsg({ text: `❌ Auth error: ${err.message}`, isError: true });
+      setStatusMsg({ text: `Auth error: ${err.message}`, isError: true });
     }
   };
 
   return (
-    <div style={{
+    <div className="animate-fade-in flex-center" style={{
       position: 'fixed',
-      top: 0,
-      left: 0,
-      width: '100vw',
-      height: '100vh',
+      top: 0, left: 0, width: '100vw', height: '100vh',
       background: 'rgba(0, 0, 0, 0.8)',
-      backdropFilter: 'blur(8px)',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
+      backdropFilter: 'blur(16px)',
+      WebkitBackdropFilter: 'blur(16px)',
       zIndex: 1000
     }}>
-      <div style={{
-        background: '#0f1420',
-        border: '1px solid rgba(255, 255, 255, 0.08)',
-        borderRadius: '24px',
-        padding: '2rem',
+      <div className="glass-panel animate-slide-up" style={{
         width: '90%',
-        maxWidth: '450px',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '1.25rem',
-        boxShadow: '0 25px 50px rgba(0,0,0,0.5)'
+        maxWidth: '420px',
+        padding: '2.5rem',
+        position: 'relative'
       }}>
-        <h2 style={{ fontWeight: 800, fontSize: '1.25rem', textAlign: 'center' }}>
-          🔑 SaaS Account Authentication
-        </h2>
+        {!hideCloseButton && onClose && (
+          <button 
+            onClick={onClose} 
+            className="btn-ghost flex-center" 
+            style={{ position: 'absolute', top: '1rem', right: '1rem', width: '32px', height: '32px', borderRadius: '50%', padding: 0 }}
+          >
+            <X size={18} />
+          </button>
+        )}
 
-        <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
+        <div className="flex-center" style={{ flexDirection: 'column', marginBottom: '2rem' }}>
+          <div style={{
+            width: '48px', height: '48px',
+            background: 'var(--gradient-primary)',
+            borderRadius: '12px',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            marginBottom: '1rem',
+            boxShadow: '0 0 20px rgba(99, 102, 241, 0.4)'
+          }}>
+            <Key size={24} color="white" />
+          </div>
+          <h2 style={{ fontSize: '1.5rem', fontWeight: 800, textAlign: 'center', color: '#fff' }}>
+            FastApply Auth
+          </h2>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginTop: '0.25rem' }}>
+            Sign in to your enterprise agent dashboard.
+          </p>
+        </div>
+
+        <div style={{ display: 'flex', background: 'rgba(0,0,0,0.3)', borderRadius: '12px', padding: '0.25rem', marginBottom: '2rem' }}>
           <button
             onClick={() => { setTab('login'); setStatusMsg(null); }}
             style={{
-              padding: '0.5rem 1rem',
-              borderRadius: '9999px',
-              border: '1px solid rgba(255,255,255,0.08)',
-              background: tab === 'login' ? 'linear-gradient(135deg, #3b82f6, #8b5cf6)' : 'rgba(255,255,255,0.05)',
-              color: 'white',
-              fontWeight: 700,
-              cursor: 'pointer'
+              flex: 1, padding: '0.6rem', borderRadius: '8px', border: 'none',
+              background: tab === 'login' ? 'var(--bg-surface)' : 'transparent',
+              color: tab === 'login' ? '#fff' : 'var(--text-muted)',
+              fontWeight: 600, fontSize: '0.85rem', cursor: 'pointer',
+              boxShadow: tab === 'login' ? 'var(--shadow-sm)' : 'none',
+              transition: 'all 0.2s'
             }}
           >
-            🔑 Log In
+            Log In
           </button>
           <button
             onClick={() => { setTab('register'); setStatusMsg(null); }}
             style={{
-              padding: '0.5rem 1rem',
-              borderRadius: '9999px',
-              border: '1px solid rgba(255,255,255,0.08)',
-              background: tab === 'register' ? 'linear-gradient(135deg, #10b981, #059669)' : 'rgba(255,255,255,0.05)',
-              color: 'white',
-              fontWeight: 700,
-              cursor: 'pointer'
+              flex: 1, padding: '0.6rem', borderRadius: '8px', border: 'none',
+              background: tab === 'register' ? 'var(--bg-surface)' : 'transparent',
+              color: tab === 'register' ? '#fff' : 'var(--text-muted)',
+              fontWeight: 600, fontSize: '0.85rem', cursor: 'pointer',
+              boxShadow: tab === 'register' ? 'var(--shadow-sm)' : 'none',
+              transition: 'all 0.2s'
             }}
           >
-            📝 Register
+            Register
           </button>
         </div>
 
         {tab === 'login' ? (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
             <div>
-              <label style={{ fontSize: '0.75rem', fontWeight: 700, color: '#9ca3af' }}>Email Address:</label>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '0.55rem 1rem',
-                  borderRadius: '9999px',
-                  background: 'rgba(255, 255, 255, 0.05)',
-                  border: '1px solid rgba(255, 255, 255, 0.08)',
-                  color: 'white',
-                  marginTop: '0.25rem'
-                }}
-              />
+              <label className="input-label">Email Address</label>
+              <div style={{ position: 'relative' }}>
+                <Mail size={16} color="var(--text-muted)" style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)' }} />
+                <input
+                  type="email"
+                  className="input-field"
+                  style={{ paddingLeft: '2.5rem' }}
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="user@example.com"
+                />
+              </div>
             </div>
             <div>
-              <label style={{ fontSize: '0.75rem', fontWeight: 700, color: '#9ca3af' }}>Password:</label>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '0.55rem 1rem',
-                  borderRadius: '9999px',
-                  background: 'rgba(255, 255, 255, 0.05)',
-                  border: '1px solid rgba(255, 255, 255, 0.08)',
-                  color: 'white',
-                  marginTop: '0.25rem'
-                }}
-              />
+              <label className="input-label">Password</label>
+              <div style={{ position: 'relative' }}>
+                <Lock size={16} color="var(--text-muted)" style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)' }} />
+                <input
+                  type="password"
+                  className="input-field"
+                  style={{ paddingLeft: '2.5rem' }}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                />
+              </div>
             </div>
-            <button
-              onClick={handleLogin}
-              style={{
-                background: 'linear-gradient(135deg, #3b82f6, #8b5cf6)',
-                border: 'none',
-                color: 'white',
-                padding: '0.6rem 1rem',
-                borderRadius: '9999px',
-                fontWeight: 700,
-                cursor: 'pointer',
-                marginTop: '0.5rem'
-              }}
-            >
-              🚀 Log In to FastApply
+            <button className="btn btn-primary" style={{ width: '100%', marginTop: '0.5rem' }} onClick={handleLogin}>
+              <LogIn size={18} /> Access Dashboard
             </button>
           </div>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
             <div>
-              <label style={{ fontSize: '0.75rem', fontWeight: 700, color: '#9ca3af' }}>Full Name:</label>
-              <input
-                type="text"
-                value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
-                placeholder="Sourabh Rustagi"
-                style={{
-                  width: '100%',
-                  padding: '0.55rem 1rem',
-                  borderRadius: '9999px',
-                  background: 'rgba(255, 255, 255, 0.05)',
-                  border: '1px solid rgba(255, 255, 255, 0.08)',
-                  color: 'white',
-                  marginTop: '0.25rem'
-                }}
-              />
+              <label className="input-label">Full Name</label>
+              <div style={{ position: 'relative' }}>
+                <User size={16} color="var(--text-muted)" style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)' }} />
+                <input
+                  type="text"
+                  className="input-field"
+                  style={{ paddingLeft: '2.5rem' }}
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  placeholder="John Doe"
+                />
+              </div>
             </div>
             <div>
-              <label style={{ fontSize: '0.75rem', fontWeight: 700, color: '#9ca3af' }}>Email Address:</label>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="user@example.com"
-                style={{
-                  width: '100%',
-                  padding: '0.55rem 1rem',
-                  borderRadius: '9999px',
-                  background: 'rgba(255, 255, 255, 0.05)',
-                  border: '1px solid rgba(255, 255, 255, 0.08)',
-                  color: 'white',
-                  marginTop: '0.25rem'
-                }}
-              />
+              <label className="input-label">Email Address</label>
+              <div style={{ position: 'relative' }}>
+                <Mail size={16} color="var(--text-muted)" style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)' }} />
+                <input
+                  type="email"
+                  className="input-field"
+                  style={{ paddingLeft: '2.5rem' }}
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="user@example.com"
+                />
+              </div>
             </div>
             <div>
-              <label style={{ fontSize: '0.75rem', fontWeight: 700, color: '#9ca3af' }}>Password:</label>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-                style={{
-                  width: '100%',
-                  padding: '0.55rem 1rem',
-                  borderRadius: '9999px',
-                  background: 'rgba(255, 255, 255, 0.05)',
-                  border: '1px solid rgba(255, 255, 255, 0.08)',
-                  color: 'white',
-                  marginTop: '0.25rem'
-                }}
-              />
+              <label className="input-label">Password</label>
+              <div style={{ position: 'relative' }}>
+                <Lock size={16} color="var(--text-muted)" style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)' }} />
+                <input
+                  type="password"
+                  className="input-field"
+                  style={{ paddingLeft: '2.5rem' }}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                />
+              </div>
             </div>
-            <button
-              onClick={handleRegister}
-              style={{
-                background: 'linear-gradient(135deg, #10b981, #059669)',
-                border: 'none',
-                color: 'white',
-                padding: '0.6rem 1rem',
-                borderRadius: '9999px',
-                fontWeight: 700,
-                cursor: 'pointer',
-                marginTop: '0.5rem'
-              }}
-            >
-              ✨ Create SaaS Account
+            <button className="btn btn-success" style={{ width: '100%', marginTop: '0.5rem' }} onClick={handleRegister}>
+              <UserPlus size={18} /> Create Account
             </button>
           </div>
         )}
 
         {statusMsg && (
-          <div style={{
-            fontSize: '0.8rem',
+          <div className="animate-fade-in" style={{
+            marginTop: '1.5rem',
+            padding: '0.75rem',
+            borderRadius: '8px',
+            fontSize: '0.85rem',
             textAlign: 'center',
-            color: statusMsg.isError ? '#f87171' : '#34d399'
+            background: statusMsg.isError ? 'rgba(239, 68, 68, 0.1)' : 'rgba(16, 185, 129, 0.1)',
+            color: statusMsg.isError ? 'var(--accent-danger)' : 'var(--accent-success)',
+            border: `1px solid ${statusMsg.isError ? 'rgba(239, 68, 68, 0.2)' : 'rgba(16, 185, 129, 0.2)'}`
           }}>
             {statusMsg.text}
-          </div>
-        )}
-
-        {!hideCloseButton && onClose && (
-          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-            <button
-              onClick={onClose}
-              style={{
-                background: 'transparent',
-                border: 'none',
-                color: '#9ca3af',
-                cursor: 'pointer'
-              }}
-            >
-              Close
-            </button>
           </div>
         )}
       </div>

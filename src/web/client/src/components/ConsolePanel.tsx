@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { AuditItem } from '../App';
+import { Terminal, Activity, ShieldCheck, PlayCircle, Layers, Globe } from 'lucide-react';
 
 interface ConsolePanelProps {
   logs: string[];
@@ -26,48 +27,48 @@ export const ConsolePanel: React.FC<ConsolePanelProps> = ({
   const [activeTab, setActiveTab] = useState<'terminal' | 'flow' | 'audit'>('terminal');
 
   return (
-    <div style={{
-      background: 'rgba(22, 30, 46, 0.75)',
-      border: '1px solid rgba(255, 255, 255, 0.08)',
-      borderRadius: '20px',
-      padding: '1.5rem',
-      backdropFilter: 'blur(10px)'
-    }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
-        <div style={{ fontSize: '1rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <span>💻</span> Agent Execution Flow & Audit Logs
+    <div className="glass-panel animate-fade-in stagger-3" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', height: '100%' }}>
+      <div className="flex-between" style={{ marginBottom: '1.25rem', flexWrap: 'wrap', gap: '1rem' }}>
+        <div style={{ fontSize: '1.1rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#fff' }}>
+          <Terminal size={18} className="text-gradient" /> Agent Console
         </div>
-        <div style={{ display: 'flex', gap: '0.4rem' }}>
+        <div style={{ display: 'flex', gap: '0.25rem', background: 'rgba(0,0,0,0.2)', padding: '0.25rem', borderRadius: '12px' }}>
           <button
             onClick={() => setActiveTab('terminal')}
             style={{
-              background: activeTab === 'terminal' ? 'rgba(255,255,255,0.1)' : 'transparent',
+              background: activeTab === 'terminal' ? 'var(--bg-surface)' : 'transparent',
               border: 'none',
-              color: activeTab === 'terminal' ? 'white' : '#9ca3af',
-              padding: '0.4rem 0.8rem',
+              color: activeTab === 'terminal' ? '#fff' : 'var(--text-muted)',
+              padding: '0.5rem 1rem',
               borderRadius: '8px',
               fontSize: '0.85rem',
-              fontWeight: 700,
-              cursor: 'pointer'
+              fontWeight: 600,
+              cursor: 'pointer',
+              display: 'flex', alignItems: 'center', gap: '0.4rem',
+              transition: 'all 0.2s',
+              boxShadow: activeTab === 'terminal' ? 'var(--shadow-sm)' : 'none'
             }}
           >
-            Console Stream
+            <Activity size={14} /> Stream
           </button>
 
           <button
             onClick={() => setActiveTab('flow')}
             style={{
-              background: activeTab === 'flow' ? 'rgba(255,255,255,0.1)' : 'transparent',
+              background: activeTab === 'flow' ? 'var(--bg-surface)' : 'transparent',
               border: 'none',
-              color: activeTab === 'flow' ? 'white' : '#9ca3af',
-              padding: '0.4rem 0.8rem',
+              color: activeTab === 'flow' ? '#fff' : 'var(--text-muted)',
+              padding: '0.5rem 1rem',
               borderRadius: '8px',
               fontSize: '0.85rem',
-              fontWeight: 700,
-              cursor: 'pointer'
+              fontWeight: 600,
+              cursor: 'pointer',
+              display: 'flex', alignItems: 'center', gap: '0.4rem',
+              transition: 'all 0.2s',
+              boxShadow: activeTab === 'flow' ? 'var(--shadow-sm)' : 'none'
             }}
           >
-            Visual Pipeline Flow
+            <PlayCircle size={14} /> Pipeline
           </button>
 
           <button
@@ -76,45 +77,48 @@ export const ConsolePanel: React.FC<ConsolePanelProps> = ({
               fetchAuditLogs();
             }}
             style={{
-              background: activeTab === 'audit' ? 'rgba(255,255,255,0.1)' : 'transparent',
+              background: activeTab === 'audit' ? 'var(--bg-surface)' : 'transparent',
               border: 'none',
-              color: activeTab === 'audit' ? 'white' : '#9ca3af',
-              padding: '0.4rem 0.8rem',
+              color: activeTab === 'audit' ? '#fff' : 'var(--text-muted)',
+              padding: '0.5rem 1rem',
               borderRadius: '8px',
               fontSize: '0.85rem',
-              fontWeight: 700,
-              cursor: 'pointer'
+              fontWeight: 600,
+              cursor: 'pointer',
+              display: 'flex', alignItems: 'center', gap: '0.4rem',
+              transition: 'all 0.2s',
+              boxShadow: activeTab === 'audit' ? 'var(--shadow-sm)' : 'none'
             }}
           >
-            📜 Audit Trail
+            <ShieldCheck size={14} /> Audit
           </button>
         </div>
       </div>
 
       {activeTab === 'terminal' && (
         <div style={{
-          background: '#05070b',
-          border: '1px solid rgba(255, 255, 255, 0.05)',
+          background: '#030712',
+          border: '1px solid var(--border-light)',
           borderRadius: '12px',
           padding: '1rem',
           fontFamily: "'JetBrains Mono', monospace",
-          fontSize: '0.85rem',
+          fontSize: '0.8rem',
           color: '#34d399',
-          height: '300px',
+          height: '280px',
           overflowY: 'auto',
           display: 'flex',
           flexDirection: 'column',
-          gap: '0.4rem'
+          gap: '0.5rem'
         }}>
           {logs.length === 0 ? (
             <div>[System] FastApply agent core initialized. Ready for application tasks.</div>
           ) : (
             logs.map((l, idx) => {
-              let color = '#34d399';
-              if (l.includes('⚠️')) color = '#fbbf24';
-              if (l.includes('❌')) color = '#f87171';
-              if (l.includes('[AgentCore]')) color = '#60a5fa';
-              if (l.includes('[RealJobScraper]')) color = '#a78bfa';
+              let color = '#34d399'; // Emerald
+              if (l.includes('⚠️')) color = '#fbbf24'; // Amber
+              if (l.includes('❌')) color = '#f87171'; // Red
+              if (l.includes('[AgentCore]')) color = '#60a5fa'; // Blue
+              if (l.includes('[RealJobScraper]')) color = '#a78bfa'; // Purple
               return <div key={idx} style={{ color }}>{l}</div>;
             })
           )}
@@ -123,61 +127,64 @@ export const ConsolePanel: React.FC<ConsolePanelProps> = ({
 
       {activeTab === 'flow' && (
         <div style={{
-          background: '#05070b',
-          border: '1px solid rgba(255, 255, 255, 0.05)',
+          background: '#030712',
+          border: '1px solid var(--border-light)',
           borderRadius: '12px',
           padding: '1.5rem',
-          height: '300px',
+          height: '280px',
           display: 'flex',
           flexDirection: 'column',
           justifyContent: 'space-between',
           gap: '1rem'
         }}>
           <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 700, fontSize: '0.9rem', marginBottom: '0.5rem' }}>
+            <div className="flex-between" style={{ fontWeight: 700, fontSize: '0.9rem', marginBottom: '0.75rem', color: '#fff' }}>
               <span>{agentState.stepName || 'Ready for Task'}</span>
-              <span>{agentState.progressPercent || 0}%</span>
+              <span className="text-gradient">{agentState.progressPercent || 0}%</span>
             </div>
-            <div style={{ width: '100%', height: '10px', background: 'rgba(255,255,255,0.1)', borderRadius: '9999px', overflow: 'hidden' }}>
-              <div style={{ height: '100%', width: `${agentState.progressPercent || 0}%`, background: 'linear-gradient(90deg, #60a5fa, #34d399)', transition: 'width 0.4s ease' }} />
+            <div style={{ width: '100%', height: '8px', background: 'rgba(255,255,255,0.1)', borderRadius: '9999px', overflow: 'hidden' }}>
+              <div style={{ height: '100%', width: `${agentState.progressPercent || 0}%`, background: 'var(--gradient-primary)', transition: 'width 0.4s ease' }} />
             </div>
           </div>
 
-          <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '12px', padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-            <div style={{ fontSize: '0.75rem', color: '#9ca3af', textTransform: 'uppercase' }}>Active Target Job</div>
-            <div style={{ fontWeight: 800, fontSize: '1.1rem' }}>{agentState.currentJobTitle || 'No job currently in process'}</div>
-            <div style={{ fontSize: '0.85rem', color: '#60a5fa' }}>{agentState.currentCompany ? `${agentState.currentCompany} • ${agentState.currentUrl}` : 'Initiate a job search above to queue jobs'}</div>
+          <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-light)', borderRadius: '12px', padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600 }}>Active Target Job</div>
+            <div style={{ fontWeight: 800, fontSize: '1.1rem', color: '#fff' }}>{agentState.currentJobTitle || 'No job currently in process'}</div>
+            <div style={{ fontSize: '0.85rem', color: 'var(--accent-primary)', fontWeight: 500 }}>
+              {agentState.currentCompany ? `${agentState.currentCompany} • ${agentState.currentUrl}` : 'Initiate a job search above to queue jobs'}
+            </div>
           </div>
 
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: '#9ca3af' }}>
-            <span>🌐 Browser: <strong style={{ color: 'white' }}>Playwright Stealth</strong></span>
-            <span>🤖 Provider: <strong style={{ color: '#60a5fa' }}>{activeProvider.toUpperCase()}</strong></span>
-            <span>🧠 QA Engine: <strong style={{ color: '#34d399' }}>SQLite Active</strong></span>
+          <div className="flex-between" style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+            <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}><Globe size={14} color="#60a5fa" /> Browser: <strong style={{ color: 'white' }}>Playwright Stealth</strong></span>
+            <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}><Layers size={14} color="#a78bfa" /> Provider: <strong style={{ color: 'white' }}>{activeProvider.toUpperCase()}</strong></span>
+            <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}><ShieldCheck size={14} color="#34d399" /> Engine: <strong style={{ color: 'white' }}>MongoDB Active</strong></span>
           </div>
         </div>
       )}
 
       {activeTab === 'audit' && (
         <div style={{
-          background: '#05070b',
-          border: '1px solid rgba(255, 255, 255, 0.05)',
+          background: '#030712',
+          border: '1px solid var(--border-light)',
           borderRadius: '12px',
           padding: '1rem',
           fontSize: '0.85rem',
           color: '#60a5fa',
-          height: '300px',
+          height: '280px',
           overflowY: 'auto',
           display: 'flex',
           flexDirection: 'column',
-          gap: '0.4rem'
+          gap: '0.5rem',
+          fontFamily: "'JetBrains Mono', monospace"
         }}>
           {auditLogs.length === 0 ? (
             <div>[Audit] No security audit logs recorded yet.</div>
           ) : (
             auditLogs.map((l) => (
-              <div key={l.id}>
-                <span style={{ color: '#9ca3af' }}>[{new Date(l.created_at).toLocaleTimeString()}]</span>{' '}
-                <strong style={{ color: '#60a5fa' }}>[{l.action}]</strong> {l.details}
+              <div key={l.id} style={{ padding: '0.25rem 0', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                <span style={{ color: 'var(--text-muted)' }}>[{new Date(l.created_at).toLocaleTimeString()}]</span>{' '}
+                <strong style={{ color: 'var(--accent-primary)' }}>[{l.action}]</strong> <span style={{ color: 'var(--text-secondary)' }}>{l.details}</span>
               </div>
             ))
           )}

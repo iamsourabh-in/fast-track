@@ -217,7 +217,7 @@ Return ONLY a JSON object matching this schema:
         authorizedToWork: p.authorizedToWork !== undefined ? (p.authorizedToWork ? true : false) : true,
         resumeText: resume_text
       },
-      { upsert: true, new: true }
+      { upsert: true, returnDocument: 'after' }
     );
 
     console.log(`[ResumeParserEngine] Updated candidate_profile DB record for user #${userId} (${fullName}).`);

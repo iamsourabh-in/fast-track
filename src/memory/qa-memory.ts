@@ -87,7 +87,7 @@ export class QAMemoryEngine {
         },
         $inc: { usageCount: 1 }
       },
-      { upsert: true, new: true }
+      { upsert: true, returnDocument: 'after' }
     ).lean();
 
     return this.mapToRecord(doc);

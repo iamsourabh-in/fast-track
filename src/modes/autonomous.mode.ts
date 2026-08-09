@@ -9,7 +9,7 @@ export class AutonomousModeHandler {
     const results: ApplicationResult[] = [];
 
     for (const job of jobs) {
-      const dailyApplied = JobTrackerEngine.getDailyAppliedCount();
+      const dailyApplied = await JobTrackerEngine.getDailyAppliedCount('000000000000000000000000');
       if (dailyApplied >= config.maxDailyApplications) {
         console.log(`[AutonomousMode] Daily limit of ${config.maxDailyApplications} applications reached. Stopping batch.`);
         break;

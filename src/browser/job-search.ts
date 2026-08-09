@@ -15,7 +15,7 @@ export class JobSearchEngine {
    * Fetches real matching job postings based on candidate profile skills & role title.
    */
   public static async findMatchingJobs(): Promise<LiveJobPosting[]> {
-    const profile = ResumeParserEngine.getActiveProfile();
+    const profile = await ResumeParserEngine.getActiveProfile('000000000000000000000000');
     const roleTitle = profile ? profile.roleTitle : 'DevOps Engineer';
 
     console.log(`[JobSearchEngine] Searching live jobs matching profile role: "${roleTitle}"...`);

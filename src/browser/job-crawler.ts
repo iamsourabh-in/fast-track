@@ -21,7 +21,7 @@ export class JobCrawlerEngine {
    */
   public static async crawlCustomCareerUrl(careerUrl: string): Promise<CrawledJobItem[]> {
     console.log(`[JobCrawlerEngine] Crawling custom career URL: ${careerUrl}`);
-    const profile = ResumeParserEngine.getActiveProfile();
+    const profile = await ResumeParserEngine.getActiveProfile('000000000000000000000000');
     const candidateRole = profile ? profile.roleTitle : 'DevOps Engineer';
 
     let page: Page | null = null;
@@ -124,7 +124,7 @@ export class JobCrawlerEngine {
    */
   public static async refreshPlatformJobs(platform: 'linkedin' | 'indeed' | 'naukri' | 'all'): Promise<CrawledJobItem[]> {
     console.log(`[JobCrawlerEngine] Refreshing job feed for platform: [${platform.toUpperCase()}]`);
-    const profile = ResumeParserEngine.getActiveProfile();
+    const profile = await ResumeParserEngine.getActiveProfile('000000000000000000000000');
     const candidateRole = profile ? profile.roleTitle : 'Systems & DevOps Engineer';
 
     const jobs: CrawledJobItem[] = [];

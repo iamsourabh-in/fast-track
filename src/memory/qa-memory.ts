@@ -1,7 +1,7 @@
-import { db } from './db.js';
+import { QAMemory } from './mongo.js';
 
 export interface QARecord {
-  id: number;
+  id: string;
   question_normalized: string;
   question_raw: string;
   answer: string;
@@ -21,33 +21,39 @@ export class QAMemoryEngine {
   /**
    * Look up if a question has been answered before in memory.
    */
-  public static findAnswer(questionRaw: string, userId: number = 1): QARecord | null {
+  public static async findAnswer(questionRaw: string, userId: string): Promise<QARecord | null> {
     const normalized = this.normalizeQuestion(questionRaw);
     
-    // 1. Direct exact match on normalized string for user_id
-    const exact = db.prepare('SELECT * FROM qa_memory WHERE user_id = ? AND question_normalized = ?').get(userId, normalized) as QARecord | undefined;
+    // 1. Direct exact match on normalized string for userId
+    const exact = await QAMemory.findOne({ userId, questionNormalized: normalized });
     if (exact) {
-      db.prepare('UPDATE qa_memory SET usage_count = usage_count + 1, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(exact.id);
-      return exact;
+      await QAMemory.updateOne(
+        { _id: exact._id },
+        { $inc: { usageCount: 1 }, $set: { updatedAt: new Date() } }
+      );
+      return this.mapToRecord(exact, exact.usageCount + 1);
     }
 
-    // 2. Fuzzy / Containment match with Category Safety for user_id
-    const all = db.prepare('SELECT * FROM qa_memory WHERE user_id = ?').all(userId) as QARecord[];
-    for (const record of all) {
+    // 2. Fuzzy / Containment match with Category Safety for userId
+    const all = await QAMemory.find({ userId }).lean();
+    for (const record of all as any[]) {
       const isEmailPhoneQuery = normalized.includes('email') || normalized.includes('phone') || normalized.includes('mobile');
-      const isEmailPhoneRecord = record.question_normalized.includes('email') || record.question_normalized.includes('phone') || record.question_normalized.includes('mobile');
+      const isEmailPhoneRecord = record.questionNormalized.includes('email') || record.questionNormalized.includes('phone') || record.questionNormalized.includes('mobile');
 
       if (isEmailPhoneQuery !== isEmailPhoneRecord) {
         continue;
       }
 
-      const sim = this.calculateSimilarity(normalized, record.question_normalized);
-      const isSub = normalized.includes(record.question_normalized) || record.question_normalized.includes(normalized);
-      const sharesKeyWords = this.sharesKeyTokens(normalized, record.question_normalized);
+      const sim = this.calculateSimilarity(normalized, record.questionNormalized);
+      const isSub = normalized.includes(record.questionNormalized) || record.questionNormalized.includes(normalized);
+      const sharesKeyWords = this.sharesKeyTokens(normalized, record.questionNormalized);
 
       if (sim >= 0.6 || isSub || sharesKeyWords) {
-        db.prepare('UPDATE qa_memory SET usage_count = usage_count + 1, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(record.id);
-        return record;
+        await QAMemory.updateOne(
+          { _id: record._id },
+          { $inc: { usageCount: 1 }, $set: { updatedAt: new Date() } }
+        );
+        return this.mapToRecord(record, record.usageCount + 1);
       }
     }
 
@@ -66,53 +72,64 @@ export class QAMemoryEngine {
   /**
    * Save a new answered question into memory cache.
    */
-  public static saveAnswer(questionRaw: string, answer: string, confidence: number = 1.0, userId: number = 1): QARecord {
+  public static async saveAnswer(questionRaw: string, answer: string, confidence: number = 1.0, userId: string): Promise<QARecord> {
     const normalized = this.normalizeQuestion(questionRaw);
     const safeAnswer = (answer !== undefined && answer !== null ? String(answer) : '').trim() || 'N/A';
     
-    const existing = db.prepare('SELECT id FROM qa_memory WHERE user_id = ? AND question_normalized = ?').get(userId, normalized) as { id: number } | undefined;
+    const doc = await QAMemory.findOneAndUpdate(
+      { userId, questionNormalized: normalized },
+      {
+        $set: {
+          questionRaw,
+          answer: safeAnswer,
+          confidence,
+          updatedAt: new Date()
+        },
+        $inc: { usageCount: 1 }
+      },
+      { upsert: true, new: true }
+    ).lean();
 
-    if (existing) {
-      db.prepare(`
-        UPDATE qa_memory SET
-          answer = ?, confidence = ?, usage_count = usage_count + 1, updated_at = CURRENT_TIMESTAMP
-        WHERE id = ?
-      `).run(safeAnswer, confidence, existing.id);
-    } else {
-      db.prepare(`
-        INSERT INTO qa_memory (user_id, question_normalized, question_raw, answer, confidence, usage_count)
-        VALUES (?, ?, ?, ?, ?, 1)
-      `).run(userId, normalized, questionRaw, safeAnswer, confidence);
-    }
-
-    return db.prepare('SELECT * FROM qa_memory WHERE user_id = ? AND question_normalized = ?').get(userId, normalized) as QARecord;
+    return this.mapToRecord(doc);
   }
 
-  public static getAllMemories(userId: number = 1): QARecord[] {
-    return db.prepare('SELECT * FROM qa_memory WHERE user_id = ? ORDER BY usage_count DESC, updated_at DESC').all(userId) as QARecord[];
+  public static async getAllMemories(userId: string): Promise<QARecord[]> {
+    const docs = await QAMemory.find({ userId }).sort({ usageCount: -1 }).lean();
+    return docs.map((doc: any) => this.mapToRecord(doc));
   }
 
-  public static updateMemory(id: number, answer: string, userId: number = 1): boolean {
+  public static async updateMemory(id: string, answer: string, userId: string): Promise<boolean> {
     const safeAnswer = (answer ?? '').trim() || 'N/A';
-    const result = db.prepare('UPDATE qa_memory SET answer = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND user_id = ?').run(safeAnswer, id, userId);
-    return result.changes > 0;
+    const result = await QAMemory.findOneAndUpdate(
+      { _id: id, userId },
+      { $set: { answer: safeAnswer, updatedAt: new Date() } }
+    );
+    return !!result;
   }
 
-  public static deleteMemory(id: number, userId: number = 1): boolean {
-    const result = db.prepare('DELETE FROM qa_memory WHERE id = ? AND user_id = ?').run(id, userId);
-    return result.changes > 0;
+  public static async deleteMemory(id: string, userId: string): Promise<boolean> {
+    const result = await QAMemory.deleteOne({ _id: id, userId });
+    return result.deletedCount === 1;
   }
 
-  public static clearAllMemories(userId: number = 1): void {
-    db.prepare('DELETE FROM qa_memory WHERE user_id = ?').run(userId);
+  public static async clearAllMemories(userId: string): Promise<void> {
+    await QAMemory.deleteMany({ userId });
     console.log(`[QAMemoryEngine] Cleared all cached memories for user #${userId}.`);
   }
 
-  public static getStats(userId: number = 1): { totalAnswers: number; totalReuses: number } {
-    const row = db.prepare('SELECT COUNT(*) as total, SUM(usage_count) as reuses FROM qa_memory WHERE user_id = ?').get(userId) as { total: number; reuses: number | null };
+  public static async getStats(userId: string): Promise<{ totalAnswers: number; totalReuses: number }> {
+    const totalAnswers = await QAMemory.countDocuments({ userId });
+    
+    const aggregation = await QAMemory.aggregate([
+      { $match: { userId: userId.toString() } }, // Make sure to match ObjectId or string correctly, depending on schema
+      { $group: { _id: null, totalReuses: { $sum: "$usageCount" } } }
+    ]);
+    
+    const totalReuses = aggregation.length > 0 ? aggregation[0].totalReuses : 0;
+    
     return {
-      totalAnswers: row.total || 0,
-      totalReuses: row.reuses || 0,
+      totalAnswers,
+      totalReuses,
     };
   }
 
@@ -123,5 +140,16 @@ export class QAMemoryEngine {
     const union = new Set([...words1, ...words2]);
     if (union.size === 0) return 0;
     return intersection.size / union.size;
+  }
+
+  private static mapToRecord(doc: any, overrideUsageCount?: number): QARecord {
+    return {
+      id: doc._id.toString(),
+      question_normalized: doc.questionNormalized,
+      question_raw: doc.questionRaw,
+      answer: doc.answer,
+      confidence: doc.confidence,
+      usage_count: overrideUsageCount ?? doc.usageCount
+    };
   }
 }

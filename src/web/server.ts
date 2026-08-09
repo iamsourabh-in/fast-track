@@ -7,10 +7,8 @@ import { config, LLMProviderType, ApplyModeType } from '../config/env.js';
 import { LLMFactory } from '../llm/llm.factory.js';
 import { JobTrackerEngine } from '../memory/job-tracker.js';
 import { QAMemoryEngine } from '../memory/qa-memory.js';
-import { SwipeModeHandler } from '../modes/swipe.mode.js';
-import { db } from '../memory/db.js';
+import { User, AuditLog, CandidateProfile, QAMemory, UserJob, AppliedJob } from '../memory/mongo.js';
 import { ResumeParserEngine } from '../memory/resume-parser.js';
-import { JobSearchEngine } from '../browser/job-search.js';
 import { RealJobScraper, RealJobPosting } from '../browser/real-job-scraper.js';
 import { AgentStateTracker } from '../agent/agent-state.js';
 import { AuthService, AuthenticatedRequest } from '../auth/auth.service.js';
@@ -24,9 +22,6 @@ export function startDashboardServer(port: number = config.port) {
   const app = express();
   app.use(cors());
   app.use(express.json());
-
-  // In-memory real crawled jobs cache
-  const activeCrawledJobs: RealJobPosting[] = [];
 
   // Serve static assets
   const publicDir = path.join(__dirname, 'public');
@@ -43,7 +38,7 @@ export function startDashboardServer(port: number = config.port) {
     if (logs.length > 500) logs.shift();
   };
 
-  // Global console interceptor to stream ALL background agent logs (Playwright, AgentCore, LLMs, Scraper) live to Web UI
+  // Global console interceptor to stream ALL background agent logs live to Web UI
   const origLog = console.log;
   const origWarn = console.warn;
   const origError = console.error;
@@ -66,18 +61,10 @@ export function startDashboardServer(port: number = config.port) {
     addLog(`❌ ${msg}`);
   };
 
-  // Sample jobs queue for Swipe & Test
-  const mockFeed = [
-    { id: '1', company: 'Google', title: 'Senior AI Engineer', location: 'Mountain View, CA', url: 'https://careers.google.com/jobs/results/12345', salary: '$180k - $240k', tags: ['AI', 'Python', 'LLM'] },
-    { id: '2', company: 'Stripe', title: 'Staff Full-Stack Engineer', location: 'San Francisco, CA', url: 'https://stripe.com/jobs/listing/23456', salary: '$190k - $250k', tags: ['TypeScript', 'Node.js', 'React'] },
-    { id: '3', company: 'Anthropic', title: 'Agent Systems Architect', location: 'San Francisco, CA', url: 'https://anthropic.com/careers/34567', salary: '$200k - $280k', tags: ['Agents', 'TypeScript', 'Playwright'] },
-    { id: '4', company: 'Vercel', title: 'Senior Frontend Infrastructure Engineer', location: 'Remote (US)', url: 'https://vercel.com/careers/45678', salary: '$160k - $210k', tags: ['Next.js', 'React', 'Performance'] },
-    { id: '5', company: 'OpenAI', title: 'Application Platform Engineer', location: 'San Francisco, CA', url: 'https://openai.com/careers/56789', salary: '$210k - $290k', tags: ['Node.js', 'Distributed Systems'] },
-  ];
-
-  // REST API Endpoints
-
+  // ────────────────────────────────────────────────────
   // Authentication & Security Routes
+  // ────────────────────────────────────────────────────
+
   app.post('/api/auth/register', async (req, res) => {
     const { email, password, fullName } = req.body;
     if (!email || !password || !fullName) {
@@ -108,128 +95,38 @@ export function startDashboardServer(port: number = config.port) {
     res.json({ user: req.user });
   });
 
-  app.get('/api/audit-logs', AuthService.authenticateToken, (req: AuthenticatedRequest, res) => {
-    const userId = req.user?.id || 1;
-    const logs = AuditLogger.getLogs(userId, 50);
-    res.json({ logs });
+  // ────────────────────────────────────────────────────
+  // Dashboard Stats & Config
+  // ────────────────────────────────────────────────────
+
+  app.get('/api/stats', AuthService.authenticateToken, async (req: AuthenticatedRequest, res) => {
+    try {
+      const userId = req.user!.id;
+      const qaStats = await QAMemoryEngine.getStats(userId);
+      const dailyApplied = await JobTrackerEngine.getDailyAppliedCount(userId);
+      const candidate = await ResumeParserEngine.getActiveProfile(userId);
+
+      res.json({
+        activeProvider: LLMFactory.getActiveProviderName(),
+        activeMode: config.mode,
+        dailyApplied,
+        maxDaily: config.maxDailyApplications,
+        qaTotalAnswers: qaStats.totalAnswers,
+        qaTotalReuses: qaStats.totalReuses,
+        candidate,
+        swipeQueueLength: 0,
+      });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
   });
 
-  // 1. Get Dashboard Stats & Config
-  app.get('/api/stats', (req, res) => {
-    const qaStats = QAMemoryEngine.getStats();
-    const dailyApplied = JobTrackerEngine.getDailyAppliedCount();
-    const candidate = ResumeParserEngine.getActiveProfile();
-
-    res.json({
-      activeProvider: LLMFactory.getActiveProviderName(),
-      activeMode: config.mode,
-      dailyApplied,
-      maxDaily: config.maxDailyApplications,
-      qaTotalAnswers: qaStats.totalAnswers,
-      qaTotalReuses: qaStats.totalReuses,
-      candidate,
-      swipeQueueLength: SwipeModeHandler.getQueueLength(),
-    });
-  });
-
-  // 1a. Get Live Agent Execution State & Flow
   app.get('/api/agent/status', (req, res) => {
     const state = AgentStateTracker.getState();
     res.json(state);
   });
 
-  // 1b. Q&A Memory Bank Management Endpoints
-  app.get('/api/memory/qa', (req, res) => {
-    const memories = QAMemoryEngine.getAllMemories();
-    res.json({ memories });
-  });
-
-  app.post('/api/memory/qa/update', (req, res) => {
-    const { id, answer } = req.body;
-    if (!id || answer === undefined) return res.status(400).json({ error: 'id and answer are required' });
-    const success = QAMemoryEngine.updateMemory(Number(id), String(answer));
-    addLog(`✏️ Updated Q&A Memory ID #${id} => "${answer}"`);
-    res.json({ success });
-  });
-
-  app.delete('/api/memory/qa/:id', (req, res) => {
-    const id = Number(req.params.id);
-    const success = QAMemoryEngine.deleteMemory(id);
-    addLog(`🗑️ Deleted Q&A Memory ID #${id}`);
-    res.json({ success });
-  });
-
-  app.post('/api/memory/qa/clear', (req, res) => {
-    QAMemoryEngine.clearAllMemories();
-    addLog(`🧹 Cleared all Q&A Memories from cache.`);
-    res.json({ success: true });
-  });
-
-  // 1c. Resume Profile Endpoints
-  app.get('/api/resume', (req, res) => {
-    const profile = ResumeParserEngine.getActiveProfile();
-    res.json({ profile });
-  });
-
-  app.post('/api/resume/parse-url', async (req, res) => {
-    const { url } = req.body;
-    if (!url) return res.status(400).json({ error: 'URL is required' });
-
-    try {
-      addLog(`📄 Parsing Candidate Resume URL => ${url}`);
-      const profile = await ResumeParserEngine.parseFromUrl(url);
-      addLog(`✅ Successfully parsed profile: ${profile.fullName} (${profile.roleTitle}, ${profile.yearsExperience} YOE)`);
-      res.json({ success: true, profile });
-    } catch (err: any) {
-      addLog(`❌ Failed to parse resume URL: ${err.message}`);
-      res.status(500).json({ error: err.message });
-    }
-  });
-
-  app.post('/api/resume/upload-pdf', upload.single('resumePdf'), async (req, res) => {
-    if (!req.file) return res.status(400).json({ error: 'PDF file is required' });
-
-    try {
-      addLog(`📄 Uploaded PDF resume: ${req.file.originalname} (${req.file.size} bytes)`);
-      const profile = await ResumeParserEngine.parseFromPdfBuffer(req.file.buffer, req.file.originalname);
-      addLog(`✅ Successfully extracted candidate profile from PDF: ${profile.fullName} (${profile.roleTitle})`);
-      res.json({ success: true, profile });
-    } catch (err: any) {
-      addLog(`❌ Failed to parse PDF resume: ${err.message}`);
-      res.status(500).json({ error: err.message });
-    }
-  });
-
-  app.post('/api/resume/synthesize', upload.single('resumePdf'), async (req, res) => {
-    const webUrl = req.body.url;
-    const pdfBuffer = req.file?.buffer;
-    const pdfFilename = req.file?.originalname;
-
-    try {
-      addLog(`🚀 Synthesizing profile from PDF (${pdfFilename || 'None'}) & Website (${webUrl || 'None'})...`);
-      const profile = await ResumeParserEngine.parseCombinedSource(pdfBuffer, pdfFilename, webUrl);
-      addLog(`✅ Combined synthesis complete! Updated profile for ${profile.fullName}`);
-      res.json({ success: true, profile });
-    } catch (err: any) {
-      addLog(`❌ Synthesis failed: ${err.message}`);
-      res.status(500).json({ error: err.message });
-    }
-  });
-
-  app.post('/api/candidate/update', (req, res) => {
-    const p = req.body;
-    if (!p.fullName) return res.status(400).json({ error: 'fullName is required' });
-
-    try {
-      ResumeParserEngine.saveProfileToDb(p);
-      addLog(`💾 Updated candidate profile facts for ${p.fullName}`);
-      res.json({ success: true });
-    } catch (err: any) {
-      res.status(500).json({ error: err.message });
-    }
-  });
-
-  // 2. Switch Provider or Mode dynamically
+  // Switch Provider or Mode dynamically
   app.post('/api/config', (req, res) => {
     const { provider, mode } = req.body;
     if (provider) {
@@ -244,16 +141,124 @@ export function startDashboardServer(port: number = config.port) {
     res.json({ success: true, provider: config.provider, mode: config.mode });
   });
 
-  // 3. Get Swipe Jobs Feed (User-Specific from SQLite)
-  app.get('/api/swipe/feed', AuthService.authenticateToken, (req: AuthenticatedRequest, res) => {
-    const userId = req.user?.id || 1;
-    const queued = JobTrackerEngine.getUserQueuedJobs(userId);
+  // ────────────────────────────────────────────────────
+  // Q&A Memory Bank Management Endpoints
+  // ────────────────────────────────────────────────────
+
+  app.get('/api/memory/qa', AuthService.authenticateToken, async (req: AuthenticatedRequest, res) => {
+    const userId = req.user!.id;
+    const memories = await QAMemoryEngine.getAllMemories(userId);
+    res.json({ memories });
+  });
+
+  app.post('/api/memory/qa/update', AuthService.authenticateToken, async (req: AuthenticatedRequest, res) => {
+    const userId = req.user!.id;
+    const { id, answer } = req.body;
+    if (!id || answer === undefined) return res.status(400).json({ error: 'id and answer are required' });
+    const success = await QAMemoryEngine.updateMemory(String(id), String(answer), userId);
+    addLog(`✏️ Updated Q&A Memory ID #${id} => "${answer}"`);
+    res.json({ success });
+  });
+
+  app.delete('/api/memory/qa/:id', AuthService.authenticateToken, async (req: AuthenticatedRequest, res) => {
+    const userId = req.user!.id;
+    const id = req.params.id;
+    const success = await QAMemoryEngine.deleteMemory(id, userId);
+    addLog(`🗑️ Deleted Q&A Memory ID #${id}`);
+    res.json({ success });
+  });
+
+  app.post('/api/memory/qa/clear', AuthService.authenticateToken, async (req: AuthenticatedRequest, res) => {
+    const userId = req.user!.id;
+    await QAMemoryEngine.clearAllMemories(userId);
+    addLog(`🧹 Cleared all Q&A Memories from cache.`);
+    res.json({ success: true });
+  });
+
+  // ────────────────────────────────────────────────────
+  // Resume Profile Endpoints
+  // ────────────────────────────────────────────────────
+
+  app.get('/api/resume', AuthService.authenticateToken, async (req: AuthenticatedRequest, res) => {
+    const userId = req.user!.id;
+    const profile = await ResumeParserEngine.getActiveProfile(userId);
+    res.json({ profile });
+  });
+
+  app.post('/api/resume/parse-url', AuthService.authenticateToken, async (req: AuthenticatedRequest, res) => {
+    const userId = req.user!.id;
+    const { url } = req.body;
+    if (!url) return res.status(400).json({ error: 'URL is required' });
+
+    try {
+      addLog(`📄 Parsing Candidate Resume URL => ${url}`);
+      const profile = await ResumeParserEngine.parseFromUrl(url, userId);
+      addLog(`✅ Successfully parsed profile: ${profile.fullName} (${profile.roleTitle}, ${profile.yearsExperience} YOE)`);
+      res.json({ success: true, profile });
+    } catch (err: any) {
+      addLog(`❌ Failed to parse resume URL: ${err.message}`);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.post('/api/resume/upload-pdf', AuthService.authenticateToken, upload.single('resumePdf'), async (req: AuthenticatedRequest, res) => {
+    const userId = req.user!.id;
+    if (!req.file) return res.status(400).json({ error: 'PDF file is required' });
+
+    try {
+      addLog(`📄 Uploaded PDF resume: ${req.file.originalname} (${req.file.size} bytes)`);
+      const profile = await ResumeParserEngine.parseFromPdfBuffer(req.file.buffer, req.file.originalname, userId);
+      addLog(`✅ Successfully extracted candidate profile from PDF: ${profile.fullName} (${profile.roleTitle})`);
+      res.json({ success: true, profile });
+    } catch (err: any) {
+      addLog(`❌ Failed to parse PDF resume: ${err.message}`);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.post('/api/resume/synthesize', AuthService.authenticateToken, upload.single('resumePdf'), async (req: AuthenticatedRequest, res) => {
+    const userId = req.user!.id;
+    const webUrl = req.body.url;
+    const pdfBuffer = req.file?.buffer;
+    const pdfFilename = req.file?.originalname;
+
+    try {
+      addLog(`🚀 Synthesizing profile from PDF (${pdfFilename || 'None'}) & Website (${webUrl || 'None'})...`);
+      const profile = await ResumeParserEngine.parseCombinedSource(pdfBuffer, pdfFilename, webUrl, userId);
+      addLog(`✅ Combined synthesis complete! Updated profile for ${profile.fullName}`);
+      res.json({ success: true, profile });
+    } catch (err: any) {
+      addLog(`❌ Synthesis failed: ${err.message}`);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.post('/api/candidate/update', AuthService.authenticateToken, async (req: AuthenticatedRequest, res) => {
+    const userId = req.user!.id;
+    const p = req.body;
+    if (!p.fullName) return res.status(400).json({ error: 'fullName is required' });
+
+    try {
+      await ResumeParserEngine.saveProfileToDb(p, userId);
+      addLog(`💾 Updated candidate profile facts for ${p.fullName}`);
+      res.json({ success: true });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // ────────────────────────────────────────────────────
+  // Job Search & Swipe Endpoints
+  // ────────────────────────────────────────────────────
+
+  app.get('/api/swipe/feed', AuthService.authenticateToken, async (req: AuthenticatedRequest, res) => {
+    const userId = req.user!.id;
+    const queued = await JobTrackerEngine.getUserQueuedJobs(userId);
     res.json({ jobs: queued });
   });
 
-  // 3b. User-Initiated Job Search (Platforms + Custom URL)
   app.post('/api/jobs/search', AuthService.authenticateToken, async (req: AuthenticatedRequest, res) => {
-    const userId = req.user?.id || 1;
+    const userId = req.user!.id;
     const { platforms, customCareerUrl, query } = req.body;
     const searchKeywords = query || 'DevOps Engineer';
     const selectedPlatforms = Array.isArray(platforms) ? platforms : ['linkedin'];
@@ -278,11 +283,11 @@ export function startDashboardServer(port: number = config.port) {
         allFound.push(...cj);
       }
 
-      const savedCount = JobTrackerEngine.saveUserJobs(allFound, userId);
-      AuditLogger.log(userId, 'JOB_SEARCH', `Discovered ${allFound.length} jobs (${savedCount} new saved to user queue)`);
+      const savedCount = await JobTrackerEngine.saveUserJobs(allFound, userId);
+      await AuditLogger.log(userId, 'JOB_SEARCH', `Discovered ${allFound.length} jobs (${savedCount} new saved to user queue)`);
       addLog(`✅ Job search completed! Saved ${savedCount} new jobs to User #${userId} queue.`);
 
-      const queued = JobTrackerEngine.getUserQueuedJobs(userId);
+      const queued = await JobTrackerEngine.getUserQueuedJobs(userId);
       res.json({ success: true, count: savedCount, jobs: queued });
     } catch (err: any) {
       addLog(`❌ Job search error: ${err.message}`);
@@ -290,47 +295,12 @@ export function startDashboardServer(port: number = config.port) {
     }
   });
 
-  // 3c. Legacy platform refresh (delegates to user job search)
-  app.post('/api/jobs/refresh-platform', AuthService.authenticateToken, async (req: AuthenticatedRequest, res) => {
-    const userId = req.user?.id || 1;
-    const { platform, query } = req.body;
-    const targetPlatform = (platform || 'linkedin').toLowerCase();
-
-    try {
-      const found = await RealJobScraper.scrapeLinkedInJobs(query || 'DevOps', 'Remote');
-      const savedCount = JobTrackerEngine.saveUserJobs(found, userId);
-      const queued = JobTrackerEngine.getUserQueuedJobs(userId);
-      res.json({ success: true, count: savedCount, jobs: queued });
-    } catch (err: any) {
-      res.status(500).json({ error: err.message });
-    }
-  });
-
-  // 3d. Crawl Custom Career URL
-  app.post('/api/jobs/crawl-custom-url', AuthService.authenticateToken, async (req: AuthenticatedRequest, res) => {
-    const userId = req.user?.id || 1;
-    const { careerUrl } = req.body;
-    if (!careerUrl) return res.status(400).json({ error: 'careerUrl is required' });
-
-    try {
-      addLog(`🌐 Playwright navigating to custom career portal => ${careerUrl}`);
-      const matchedJobs = await RealJobScraper.crawlCustomCareerUrl(careerUrl);
-      const savedCount = JobTrackerEngine.saveUserJobs(matchedJobs, userId);
-      const queued = JobTrackerEngine.getUserQueuedJobs(userId);
-      res.json({ success: true, count: savedCount, jobs: queued });
-    } catch (err: any) {
-      addLog(`❌ Custom career URL crawl failed: ${err.message}`);
-      res.status(500).json({ error: err.message });
-    }
-  });
-
-  // 4. Swipe Right (Apply)
-  app.post('/api/swipe/right', AuthService.authenticateToken, (req: AuthenticatedRequest, res) => {
-    const userId = req.user?.id || 1;
+  app.post('/api/swipe/right', AuthService.authenticateToken, async (req: AuthenticatedRequest, res) => {
+    const userId = req.user!.id;
     const { job } = req.body;
     if (!job) return res.status(400).json({ error: 'Job payload missing' });
 
-    JobTrackerEngine.recordJob({
+    await JobTrackerEngine.recordJob({
       company: job.company,
       title: job.title,
       location: job.location,
@@ -339,25 +309,17 @@ export function startDashboardServer(port: number = config.port) {
       status: 'applied',
     }, userId);
 
-    SwipeModeHandler.addJobToSwipeQueue({
-      company: job.company,
-      title: job.title,
-      location: job.location,
-      url: job.url || job.job_url,
-    });
-
-    AuditLogger.log(userId, 'APPLY_JOB', `Applied to ${job.title} at ${job.company}`);
+    await AuditLogger.log(userId, 'APPLY_JOB', `Applied to ${job.title} at ${job.company}`);
     addLog(`👉 SWIPE RIGHT (Applied): ${job.title} at ${job.company}`);
     res.json({ success: true, status: 'queued' });
   });
 
-  // 5. Swipe Left (Skip)
-  app.post('/api/swipe/left', AuthService.authenticateToken, (req: AuthenticatedRequest, res) => {
-    const userId = req.user?.id || 1;
+  app.post('/api/swipe/left', AuthService.authenticateToken, async (req: AuthenticatedRequest, res) => {
+    const userId = req.user!.id;
     const { job } = req.body;
     if (!job) return res.status(400).json({ error: 'Job payload missing' });
 
-    JobTrackerEngine.recordJob({
+    await JobTrackerEngine.recordJob({
       company: job.company,
       title: job.title,
       location: job.location,
@@ -366,38 +328,47 @@ export function startDashboardServer(port: number = config.port) {
       status: 'skipped',
     }, userId);
 
-    AuditLogger.log(userId, 'SKIP_JOB', `Skipped ${job.title} at ${job.company}`);
+    await AuditLogger.log(userId, 'SKIP_JOB', `Skipped ${job.title} at ${job.company}`);
     addLog(`👈 SWIPE LEFT (Skipped): ${job.title} at ${job.company}`);
     res.json({ success: true, status: 'skipped' });
   });
 
-  // 6. Application History Endpoint
-  app.get('/api/history', AuthService.authenticateToken, (req: AuthenticatedRequest, res) => {
-    const userId = req.user?.id || 1;
-    const history = JobTrackerEngine.getRecentHistory(userId);
+  // ────────────────────────────────────────────────────
+  // History & Audit Logs
+  // ────────────────────────────────────────────────────
+
+  app.get('/api/history', AuthService.authenticateToken, async (req: AuthenticatedRequest, res) => {
+    const userId = req.user!.id;
+    const history = await JobTrackerEngine.getRecentHistory(userId);
     res.json({ jobs: history });
   });
 
-  // 7. Get Live Agent Logs
+  app.get('/api/audit-logs', AuthService.authenticateToken, async (req: AuthenticatedRequest, res) => {
+    const userId = req.user!.id;
+    const auditLogs = await AuditLogger.getLogs(userId, 50);
+    res.json({ logs: auditLogs });
+  });
+
+  // ────────────────────────────────────────────────────
+  // Live Agent Logs
+  // ────────────────────────────────────────────────────
+
   app.get('/api/logs', (req, res) => {
     res.json({ logs });
   });
 
-  // 8. Reset Entire Database & Start Fresh
-  app.post('/api/db/reset', (req, res) => {
-    try {
-      db.prepare('DELETE FROM candidate_profile').run();
-      db.prepare('DELETE FROM qa_memory').run();
-      db.prepare('DELETE FROM user_jobs').run();
-      db.prepare('DELETE FROM applied_jobs').run();
-      db.prepare('DELETE FROM audit_logs').run();
-      db.prepare('DELETE FROM users').run();
+  // ────────────────────────────────────────────────────
+  // Database Reset
+  // ────────────────────────────────────────────────────
 
-      // Seed fresh default admin account
-      db.prepare(`
-        INSERT INTO users (id, email, password_hash, full_name, role)
-        VALUES (1, 'sourabh.rustagi@hotmail.com', '$2a$10$wE1V2vY9L8A2oM0wJ5nJd.8O2rS6T5u.qZ7mJ5W5u3qZ7mJ5W5u3q', 'Sourabh Rustagi', 'admin')
-      `).run();
+  app.post('/api/db/reset', async (req, res) => {
+    try {
+      await CandidateProfile.deleteMany({});
+      await QAMemory.deleteMany({});
+      await UserJob.deleteMany({});
+      await AppliedJob.deleteMany({});
+      await AuditLog.deleteMany({});
+      await User.deleteMany({});
 
       addLog(`💣 RESET DATABASE: Purged candidate profiles, Q&A memories, user jobs, history, and audit logs.`);
       res.json({ success: true, message: 'Database reset successfully!' });

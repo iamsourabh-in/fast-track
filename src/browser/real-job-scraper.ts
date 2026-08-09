@@ -62,13 +62,13 @@ export class RealJobScraper {
 
       console.log(`[RealJobScraper] Found ${rawJobs.length} real live job cards on LinkedIn!`);
 
-      rawJobs.slice(0, 15).forEach((j, idx) => {
-        if (JobTrackerEngine.isAlreadyProcessed(j.company, j.title, j.url)) {
+      for (const j of rawJobs.slice(0, 15)) {
+        if (await JobTrackerEngine.isAlreadyProcessed(j.company, j.title, j.url, '000000000000000000000000')) {
           console.log(`[RealJobScraper] ⏩ Skipping previously processed job: ${j.company} - ${j.title}`);
-          return;
+          continue;
         }
         jobs.push({
-          id: `linkedin_real_${Date.now()}_${idx}`,
+          id: `linkedin_real_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
           company: j.company,
           title: j.title,
           location: j.location,
@@ -78,7 +78,7 @@ export class RealJobScraper {
           postedTime: j.posted,
           descriptionSnippet: `Real LinkedIn Job Listing: ${j.title} at ${j.company}`,
         });
-      });
+      }
     } catch (err: any) {
       console.error(`[RealJobScraper] Error scraping LinkedIn: ${err.message}`);
     } finally {

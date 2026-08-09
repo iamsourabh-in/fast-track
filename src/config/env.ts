@@ -16,7 +16,8 @@ export interface AppConfig {
   maxDailyApplications: number;
   headless: boolean;
   port: number;
-  dbPath: string;
+  mongoUri: string;
+  jwtSecret: string;
 }
 
 export const config: AppConfig = {
@@ -29,5 +30,6 @@ export const config: AppConfig = {
   maxDailyApplications: parseInt(process.env.MAX_DAILY_APPLICATIONS || '250', 10),
   headless: process.env.HEADLESS === 'true' || process.env.HEADLESS === '1',
   port: parseInt(process.env.PORT || '3000', 10),
-  dbPath: path.resolve(process.cwd(), 'data', 'fastapply.db'),
+  mongoUri: process.env.MONGODB_URI || 'mongodb://localhost:27017/fasttrack',
+  jwtSecret: process.env.JWT_SECRET || 'fastapply-enterprise-saas-secret-key-2026',
 };

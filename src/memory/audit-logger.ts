@@ -1,35 +1,40 @@
-import { db } from './db.js';
+import { AuditLog } from './mongo.js';
 
 export interface AuditLogEntry {
-  id: number;
-  user_id: number;
+  id: string;
+  userId: string;
   action: string;
   details: string;
-  ip_address: string;
-  created_at: string;
+  ipAddress: string;
+  createdAt: string;
 }
 
 export class AuditLogger {
-  public static log(userId: number, action: string, details: string = '', ipAddress: string = '127.0.0.1'): void {
+  public static async log(userId: string, action: string, details: string = '', ipAddress: string = '127.0.0.1'): Promise<void> {
     try {
-      db.prepare(`
-        INSERT INTO audit_logs (user_id, action, details, ip_address)
-        VALUES (?, ?, ?, ?)
-      `).run(userId, action, details, ipAddress);
+      await new AuditLog({
+        userId,
+        action,
+        details,
+        ipAddress
+      }).save();
       console.log(`[AuditLogger] 📜 [User #${userId}] ${action}: ${details}`);
     } catch (err: any) {
       console.error(`[AuditLogger] Error logging audit action: ${err.message}`);
     }
   }
 
-  public static getLogs(userId: number = 1, limit: number = 50): AuditLogEntry[] {
+  public static async getLogs(userId: string, limit: number = 50): Promise<AuditLogEntry[]> {
     try {
-      return db.prepare(`
-        SELECT * FROM audit_logs
-        WHERE user_id = ?
-        ORDER BY id DESC
-        LIMIT ?
-      `).all(userId, limit) as AuditLogEntry[];
+      const logs = await AuditLog.find({ userId }).sort({ createdAt: -1 }).limit(limit).lean();
+      return logs.map((log: any) => ({
+        id: log._id.toString(),
+        userId: log.userId.toString(),
+        action: log.action,
+        details: log.details,
+        ipAddress: log.ipAddress,
+        createdAt: log.createdAt ? log.createdAt.toISOString() : new Date().toISOString()
+      }));
     } catch (err: any) {
       console.error(`[AuditLogger] Error retrieving audit logs: ${err.message}`);
       return [];

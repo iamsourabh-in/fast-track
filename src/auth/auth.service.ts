@@ -1,23 +1,14 @@
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { Request, Response, NextFunction } from 'express';
-import { db } from '../memory/db.js';
-import { AuditLogger } from '../memory/audit-logger.js';
+import { User, AuditLog } from '../memory/mongo.js';
+import { config } from '../config/env.js';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'fastapply-enterprise-saas-secret-key-2026';
-
-export interface UserRecord {
-  id: number;
-  email: string;
-  password_hash: string;
-  full_name: string;
-  role: string;
-  created_at: string;
-}
+const JWT_SECRET = config.jwtSecret || 'fastapply-enterprise-saas-secret-key-2026';
 
 export interface AuthenticatedRequest extends Request {
   user?: {
-    id: number;
+    id: string;
     email: string;
     fullName: string;
     role: string;
@@ -26,7 +17,7 @@ export interface AuthenticatedRequest extends Request {
 
 export class AuthService {
   public static async register(email: string, password: string, fullName: string, ip: string = '127.0.0.1') {
-    const existing = db.prepare('SELECT id FROM users WHERE email = ?').get(email.toLowerCase().trim());
+    const existing = await User.findOne({ email: email.toLowerCase().trim() });
     if (existing) {
       throw new Error('User with this email address already exists.');
     }
@@ -34,33 +25,54 @@ export class AuthService {
     const salt = await bcrypt.genSalt(10);
     const passwordHash = await bcrypt.hash(password, salt);
 
-    const result = db.prepare(`
-      INSERT INTO users (email, password_hash, full_name, role)
-      VALUES (?, ?, ?, 'user')
-    `).run(email.toLowerCase().trim(), passwordHash, fullName.trim());
+    const newUser = new User({
+      email: email.toLowerCase().trim(),
+      passwordHash,
+      fullName: fullName.trim(),
+      role: 'user'
+    });
+    
+    await newUser.save();
+    
+    const userId = newUser._id.toString();
+    
+    await new AuditLog({
+      userId,
+      action: 'REGISTER',
+      details: `Created new user account for ${email}`,
+      ipAddress: ip
+    }).save();
 
-    const userId = Number(result.lastInsertRowid);
-    AuditLogger.log(userId, 'REGISTER', `Created new user account for ${email}`, ip);
-
-    const token = jwt.sign({ id: userId, email, fullName, role: 'user' }, JWT_SECRET, { expiresIn: '7d' });
-    return { token, user: { id: userId, email, fullName, role: 'user' } };
+    const payload = { id: userId, email: newUser.email, fullName: newUser.fullName, role: newUser.role };
+    const token = jwt.sign(payload, JWT_SECRET, { expiresIn: '7d' });
+    
+    return { token, user: payload };
   }
 
   public static async login(email: string, password: string, ip: string = '127.0.0.1') {
-    const user = db.prepare('SELECT * FROM users WHERE email = ?').get(email.toLowerCase().trim()) as UserRecord | undefined;
+    const user = await User.findOne({ email: email.toLowerCase().trim() });
     if (!user) {
       throw new Error('Invalid email or password.');
     }
 
-    const match = await bcrypt.compare(password, user.password_hash);
-    if (!match && password !== 'password123') { // Fallback check for seeded default admin
+    const match = await bcrypt.compare(password, user.passwordHash);
+    if (!match) {
       throw new Error('Invalid email or password.');
     }
 
-    AuditLogger.log(user.id, 'LOGIN', `Successful user authentication for ${email}`, ip);
+    const userId = user._id.toString();
+    
+    await new AuditLog({
+      userId,
+      action: 'LOGIN',
+      details: `Successful user authentication for ${email}`,
+      ipAddress: ip
+    }).save();
 
-    const token = jwt.sign({ id: user.id, email: user.email, fullName: user.full_name, role: user.role }, JWT_SECRET, { expiresIn: '7d' });
-    return { token, user: { id: user.id, email: user.email, fullName: user.full_name, role: user.role } };
+    const payload = { id: userId, email: user.email, fullName: user.fullName, role: user.role };
+    const token = jwt.sign(payload, JWT_SECRET, { expiresIn: '7d' });
+    
+    return { token, user: payload };
   }
 
   public static authenticateToken(req: AuthenticatedRequest, res: Response, next: NextFunction) {
@@ -68,14 +80,12 @@ export class AuthService {
     const token = (authHeader && authHeader.split(' ')[1]) || (req.query.token as string);
 
     if (!token) {
-      // Default to primary user #1 for open dashboard access if no token header passed
-      req.user = { id: 1, email: 'sourabh.rustagi@hotmail.com', fullName: 'Sourabh Rustagi', role: 'admin' };
-      return next();
+      return res.status(401).json({ error: 'Unauthorized: No token provided' });
     }
 
     jwt.verify(token, JWT_SECRET, (err: any, decoded: any) => {
       if (err) {
-        req.user = { id: 1, email: 'sourabh.rustagi@hotmail.com', fullName: 'Sourabh Rustagi', role: 'admin' };
+        return res.status(401).json({ error: 'Unauthorized: Invalid token' });
       } else {
         req.user = decoded;
       }

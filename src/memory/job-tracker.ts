@@ -1,7 +1,8 @@
-import { db } from './db.js';
+import { UserJob, AppliedJob } from './mongo.js';
 
 export interface AppliedJobRecord {
-  id: number;
+  id: string;
+  userId: string;
   job_key: string;
   company: string;
   title: string;
@@ -14,8 +15,8 @@ export interface AppliedJobRecord {
 }
 
 export interface UserJobRecord {
-  id: number;
-  user_id: number;
+  id: string;
+  userId: string;
   job_key: string;
   company: string;
   title: string;
@@ -35,44 +36,76 @@ export class JobTrackerEngine {
     return `${cleanCompany}::${cleanTitle}::${cleanUrl}`;
   }
 
-  public static isAlreadyProcessed(company: string, title: string, jobUrl: string, userId: number = 1): boolean {
+  public static async isAlreadyProcessed(company: string, title: string, jobUrl: string, userId: string): Promise<boolean> {
     const key = this.generateJobKey(company, title, jobUrl);
-    const existing = db.prepare('SELECT id, status FROM applied_jobs WHERE user_id = ? AND (job_key = ? OR job_url = ?)').get(userId, key, jobUrl) as { id: number; status: string } | undefined;
+    const existing = await AppliedJob.findOne({
+      userId,
+      $or: [{ jobKey: key }, { jobUrl }]
+    }).lean();
     if (existing) return true;
 
-    const userJob = db.prepare("SELECT id, status FROM user_jobs WHERE user_id = ? AND (job_key = ? OR job_url = ?) AND status != 'queued'").get(userId, key, jobUrl);
+    const userJob = await UserJob.findOne({
+      userId,
+      $or: [{ jobKey: key }, { jobUrl }],
+      status: { $ne: 'queued' }
+    }).lean();
     return !!userJob;
   }
 
-  public static saveUserJobs(jobs: any[], userId: number = 1): number {
+  public static async saveUserJobs(jobs: any[], userId: string): Promise<number> {
     let saved = 0;
-    const stmt = db.prepare(`
-      INSERT INTO user_jobs (user_id, job_key, company, title, location, job_url, source, salary, status)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'queued')
-      ON CONFLICT(user_id, job_key) DO UPDATE SET
-        company = excluded.company,
-        title = excluded.title
-    `);
-
+    
     for (const j of jobs) {
       const key = this.generateJobKey(j.company, j.title, j.url);
       try {
-        stmt.run(userId, key, j.company, j.title, j.location || 'Remote', j.url, j.source || 'custom', j.salary || '$160k - $240k');
+        await UserJob.updateOne(
+          { userId, jobKey: key },
+          {
+            $set: {
+              company: j.company,
+              title: j.title,
+              location: j.location || 'Remote',
+              jobUrl: j.url,
+              source: j.source || 'custom',
+              salary: j.salary || '$160k - $240k',
+              status: 'queued'
+            }
+          },
+          { upsert: true }
+        );
         saved++;
-      } catch {}
+      } catch (err) {
+        console.error(`[JobTrackerEngine] Error saving job ${key}:`, err);
+      }
     }
     return saved;
   }
 
-  public static getUserQueuedJobs(userId: number = 1): UserJobRecord[] {
-    return db.prepare("SELECT * FROM user_jobs WHERE user_id = ? AND status = 'queued' ORDER BY id ASC").all(userId) as UserJobRecord[];
+  public static async getUserQueuedJobs(userId: string): Promise<UserJobRecord[]> {
+    const jobs = await UserJob.find({ userId, status: 'queued' }).sort({ createdAt: 1 }).lean();
+    return jobs.map((j: any) => ({
+      id: j._id.toString(),
+      userId: j.userId.toString(),
+      job_key: j.jobKey,
+      company: j.company,
+      title: j.title,
+      location: j.location,
+      job_url: j.jobUrl,
+      source: j.source,
+      salary: j.salary,
+      status: j.status,
+      created_at: j.createdAt ? j.createdAt.toISOString() : new Date().toISOString()
+    }));
   }
 
-  public static updateUserJobStatus(jobKeyOrUrl: string, status: 'applied' | 'skipped' | 'failed', userId: number = 1): void {
-    db.prepare('UPDATE user_jobs SET status = ? WHERE user_id = ? AND (job_key = ? OR job_url = ?)').run(status, userId, jobKeyOrUrl, jobKeyOrUrl);
+  public static async updateUserJobStatus(jobKeyOrUrl: string, status: 'applied' | 'skipped' | 'failed', userId: string): Promise<void> {
+    await UserJob.updateOne(
+      { userId, $or: [{ jobKey: jobKeyOrUrl }, { jobUrl: jobKeyOrUrl }] },
+      { $set: { status } }
+    );
   }
 
-  public static recordJob(job: {
+  public static async recordJob(job: {
     company: string;
     title: string;
     location?: string;
@@ -80,33 +113,71 @@ export class JobTrackerEngine {
     applyMode: string;
     status: 'applied' | 'skipped' | 'failed' | 'pending';
     notes?: string;
-  }, userId: number = 1): AppliedJobRecord {
+  }, userId: string): Promise<AppliedJobRecord> {
     const key = this.generateJobKey(job.company, job.title, job.jobUrl);
 
-    db.prepare(`
-      INSERT INTO applied_jobs (user_id, job_key, company, title, location, job_url, apply_mode, status, notes)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(userId, key, job.company, job.title, job.location || '', job.jobUrl, job.applyMode, job.status, job.notes || '');
+    const appliedJob = new AppliedJob({
+      userId,
+      jobKey: key,
+      company: job.company,
+      title: job.title,
+      location: job.location || '',
+      jobUrl: job.jobUrl,
+      applyMode: job.applyMode,
+      status: job.status,
+      notes: job.notes || ''
+    });
+    
+    await appliedJob.save();
 
-    this.updateUserJobStatus(key, job.status === 'applied' ? 'applied' : 'skipped', userId);
+    await this.updateUserJobStatus(key, job.status === 'applied' ? 'applied' : 'skipped', userId);
 
-    return db.prepare('SELECT * FROM applied_jobs WHERE user_id = ? AND job_key = ?').get(userId, key) as AppliedJobRecord;
+    return {
+      id: appliedJob._id.toString(),
+      userId: appliedJob.userId.toString(),
+      job_key: appliedJob.jobKey,
+      company: appliedJob.company,
+      title: appliedJob.title,
+      location: appliedJob.location,
+      job_url: appliedJob.jobUrl,
+      apply_mode: appliedJob.applyMode,
+      status: appliedJob.status as any,
+      notes: appliedJob.notes,
+      applied_at: (appliedJob as any).createdAt ? (appliedJob as any).createdAt.toISOString() : new Date().toISOString()
+    };
   }
 
-  public static getDailyAppliedCount(userId: number = 1): number {
-    const row = db.prepare(`
-      SELECT COUNT(*) as count FROM applied_jobs 
-      WHERE user_id = ? AND status = 'applied' AND date(applied_at) = date('now')
-    `).get(userId) as { count: number };
-    return row.count || 0;
+  public static async getDailyAppliedCount(userId: string): Promise<number> {
+    const startOfDay = new Date();
+    startOfDay.setHours(0, 0, 0, 0);
+    
+    const endOfDay = new Date();
+    endOfDay.setHours(23, 59, 59, 999);
+
+    return await AppliedJob.countDocuments({
+      userId,
+      status: 'applied',
+      createdAt: {
+        $gte: startOfDay,
+        $lte: endOfDay
+      }
+    });
   }
 
-  public static getRecentHistory(userId: number = 1, limit: number = 50): AppliedJobRecord[] {
-    return db.prepare(`
-      SELECT * FROM applied_jobs
-      WHERE user_id = ?
-      ORDER BY applied_at DESC
-      LIMIT ?
-    `).all(userId, limit) as AppliedJobRecord[];
+  public static async getRecentHistory(userId: string, limit: number = 50): Promise<AppliedJobRecord[]> {
+    const jobs = await AppliedJob.find({ userId }).sort({ createdAt: -1 }).limit(limit).lean();
+    return jobs.map((j: any) => ({
+      id: j._id.toString(),
+      userId: j.userId.toString(),
+      job_key: j.jobKey,
+      company: j.company,
+      title: j.title,
+      location: j.location,
+      job_url: j.jobUrl,
+      apply_mode: j.applyMode,
+      status: j.status,
+      notes: j.notes,
+      applied_at: j.createdAt ? j.createdAt.toISOString() : new Date().toISOString()
+    }));
   }
 }

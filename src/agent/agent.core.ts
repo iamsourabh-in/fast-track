@@ -56,10 +56,10 @@ export class AgentCore {
     });
 
     // 1. Deduplication check
-    if (JobTrackerEngine.isAlreadyProcessed(job.company, job.title, job.url)) {
+    if (await JobTrackerEngine.isAlreadyProcessed(job.company, job.title, job.url, '000000000000000000000000')) {
       console.log(`[AgentCore] ⏩ Skipping duplicate job: ${job.company} - ${job.title}`);
       AgentStateTracker.updateState({ status: 'completed', activeStep: 5, stepName: 'Completed (Skipped Duplicate)', progressPercent: 100 });
-      const record = JobTrackerEngine.recordJob({
+      const record = await JobTrackerEngine.recordJob({
         company: job.company,
         title: job.title,
         location: job.location,
@@ -67,7 +67,7 @@ export class AgentCore {
         applyMode: mode,
         status: 'skipped',
         notes: 'Duplicate detected by JobTrackerEngine',
-      });
+      }, '000000000000000000000000');
       return {
         job,
         status: 'skipped',
@@ -122,7 +122,7 @@ export class AgentCore {
         }
 
         // Memory cache lookup
-        const cachedQA = QAMemoryEngine.findAnswer(field.label);
+        const cachedQA = await QAMemoryEngine.findAnswer(field.label, '000000000000000000000000');
         let answerText = '';
 
         if (cachedQA) {
@@ -136,7 +136,7 @@ export class AgentCore {
           answerText = await activeLLM.generateAnswer(prompt, { systemPrompt: SYSTEM_PROMPT_JOB_QA });
           
           // Save to QA Memory Engine
-          QAMemoryEngine.saveAnswer(field.label, answerText, 0.95);
+          await QAMemoryEngine.saveAnswer(field.label, answerText, 0.95, '000000000000000000000000');
           console.log(`[AgentCore] 🤖 LLM Answer Generated (${activeLLM.name}): "${field.label}" => "${answerText}"`);
         }
 
@@ -180,7 +180,7 @@ export class AgentCore {
       }
 
       // Record in JobTrackerEngine
-      JobTrackerEngine.recordJob({
+      await JobTrackerEngine.recordJob({
         company: job.company,
         title: job.title,
         location: job.location,
@@ -188,7 +188,7 @@ export class AgentCore {
         applyMode: mode,
         status: finalStatus,
         notes: `Successfully completed with ${fieldsFilledCount} fields filled (${memoryHitsCount} cache hits, ${llmCallsCount} LLM calls)`,
-      });
+      }, '000000000000000000000000');
 
       return {
         job,
@@ -201,7 +201,7 @@ export class AgentCore {
       };
     } catch (err: any) {
       console.error(`[AgentCore] Error processing job application: ${err.message}`);
-      JobTrackerEngine.recordJob({
+      await JobTrackerEngine.recordJob({
         company: job.company,
         title: job.title,
         location: job.location,
@@ -209,7 +209,7 @@ export class AgentCore {
         applyMode: mode,
         status: 'failed',
         notes: err.message,
-      });
+      }, '000000000000000000000000');
 
       return {
         job,

@@ -2,11 +2,12 @@ import React, { useState } from 'react';
 import { UserProfile } from '../App';
 
 interface AuthModalProps {
-  onClose: () => void;
+  onClose?: () => void;
   onAuthSuccess: (token: string, user: UserProfile) => void;
+  hideCloseButton?: boolean;
 }
 
-export const AuthModal: React.FC<AuthModalProps> = ({ onClose, onAuthSuccess }) => {
+export const AuthModal: React.FC<AuthModalProps> = ({ onClose, onAuthSuccess, hideCloseButton }) => {
   const [tab, setTab] = useState<'login' | 'register'>('login');
   const [email, setEmail] = useState('sourabh.rustagi@hotmail.com');
   const [password, setPassword] = useState('password123');
@@ -262,19 +263,21 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose, onAuthSuccess }) 
           </div>
         )}
 
-        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-          <button
-            onClick={onClose}
-            style={{
-              background: 'transparent',
-              border: 'none',
-              color: '#9ca3af',
-              cursor: 'pointer'
-            }}
-          >
-            Close
-          </button>
-        </div>
+        {!hideCloseButton && onClose && (
+          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+            <button
+              onClick={onClose}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                color: '#9ca3af',
+                cursor: 'pointer'
+              }}
+            >
+              Close
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

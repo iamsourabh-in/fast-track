@@ -10,6 +10,7 @@ import { AuthModal } from './components/AuthModal';
 import { ResumeModal } from './components/ResumeModal';
 import { ProfileModal } from './components/ProfileModal';
 import { MemoryModal } from './components/MemoryModal';
+import { Search, X } from 'lucide-react';
 
 export interface UserProfile {
   id: string;
@@ -68,6 +69,7 @@ export default function App() {
   const [showResumeModal, setShowResumeModal] = useState<boolean>(false);
   const [showProfileModal, setShowProfileModal] = useState<boolean>(false);
   const [showMemoryModal, setShowMemoryModal] = useState<boolean>(false);
+  const [showSearchModal, setShowSearchModal] = useState<boolean>(false);
   const [showConsole, setShowConsole] = useState<boolean>(false);
 
   // Data State
@@ -368,14 +370,15 @@ export default function App() {
           onOpenProfile={() => setShowProfileModal(true)}
         />
 
-        <JobSearchToolbar
-          getHeaders={getHeaders}
-          onSearchComplete={(newJobs: JobPosting[]) => {
-            setJobFeed(newJobs);
-            setJobIndex(0);
-            refreshAll();
-          }}
-        />
+        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1rem' }}>
+          <button 
+            className="btn btn-primary" 
+            style={{ padding: '0.75rem 2rem', fontSize: '1.1rem', borderRadius: '9999px', boxShadow: 'var(--shadow-lg)' }}
+            onClick={() => setShowSearchModal(true)}
+          >
+            <Search size={18} style={{ marginRight: '8px' }}/> Find New Jobs
+          </button>
+        </div>
 
         <PipelineStepper agentState={agentState} />
 
@@ -441,6 +444,29 @@ export default function App() {
           onClose={() => setShowMemoryModal(false)}
           onUpdateStats={fetchStats}
         />
+      )}
+
+      {showSearchModal && (
+        <div className="modal-backdrop animate-fade-in" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div className="modal-content animate-slide-up" style={{ width: '100%', maxWidth: '800px', padding: '2rem' }}>
+            <div className="flex-between" style={{ marginBottom: '1.5rem' }}>
+              <h2 style={{ fontSize: '1.5rem', fontWeight: 800 }}>Discover Jobs</h2>
+              <button className="btn btn-ghost" onClick={() => setShowSearchModal(false)} style={{ padding: '0.5rem' }}>
+                <X size={20} />
+              </button>
+            </div>
+            
+            <JobSearchToolbar
+              getHeaders={getHeaders}
+              onSearchComplete={(newJobs: JobPosting[]) => {
+                setJobFeed(newJobs);
+                setJobIndex(0);
+                setShowSearchModal(false);
+                refreshAll();
+              }}
+            />
+          </div>
+        </div>
       )}
     </div>
   );

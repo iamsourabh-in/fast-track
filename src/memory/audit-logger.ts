@@ -27,7 +27,7 @@ export class AuditLogger {
       return db.prepare(`
         SELECT * FROM audit_logs
         WHERE user_id = ?
-        ORDER BY created_at DESC
+        ORDER BY id DESC
         LIMIT ?
       `).all(userId, limit) as AuditLogEntry[];
     } catch (err: any) {

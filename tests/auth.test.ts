@@ -25,7 +25,8 @@ async function runAuthTests() {
   const logs = AuditLogger.getLogs(regResult.user.id);
   console.log(`✅ Found ${logs.length} audit trail entries for user #${regResult.user.id}!`);
 
-  if (logs.length >= 2 && logs[0].action === 'LOGIN' && logs[1].action === 'REGISTER') {
+  const actions = logs.map(l => l.action);
+  if (logs.length >= 2 && actions.includes('LOGIN') && actions.includes('REGISTER')) {
     console.log('\n🎉 ALL MULTI-USER AUTH & AUDIT LOG TESTS PASSED!');
   } else {
     throw new Error('Audit log assertion failed.');

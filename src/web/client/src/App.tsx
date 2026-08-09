@@ -10,6 +10,7 @@ import { AuthModal } from './components/AuthModal';
 import { ResumeModal } from './components/ResumeModal';
 import { ProfileModal } from './components/ProfileModal';
 import { MemoryModal } from './components/MemoryModal';
+import { HistoryModal } from './components/HistoryModal';
 import { Search, X } from 'lucide-react';
 
 export interface UserProfile {
@@ -70,6 +71,7 @@ export default function App() {
   const [showProfileModal, setShowProfileModal] = useState<boolean>(false);
   const [showMemoryModal, setShowMemoryModal] = useState<boolean>(false);
   const [showSearchModal, setShowSearchModal] = useState<boolean>(false);
+  const [showHistoryModal, setShowHistoryModal] = useState<boolean>(false);
   const [showConsole, setShowConsole] = useState<boolean>(false);
 
   // Data State
@@ -361,6 +363,7 @@ export default function App() {
         onOpenMemory={() => setShowMemoryModal(true)}
         onOpenResume={() => setShowResumeModal(true)}
         onOpenSearch={() => setShowSearchModal(true)}
+        onOpenHistory={() => setShowHistoryModal(true)}
         onRefresh={refreshAll}
       />
 
@@ -468,6 +471,9 @@ export default function App() {
             />
           </div>
         </div>
+      )}
+      {showHistoryModal && (
+        <HistoryModal history={history} onClose={() => setShowHistoryModal(false)} />
       )}
     </div>
   );

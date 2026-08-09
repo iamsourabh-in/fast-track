@@ -159,7 +159,7 @@ export class JobTrackerEngine {
     return await AppliedJob.countDocuments({
       userId,
       status: 'applied',
-      createdAt: {
+      appliedAt: {
         $gte: startOfDay,
         $lte: endOfDay
       }

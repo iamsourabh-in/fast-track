@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { UserProfile } from '../App';
-import { LogOut, User, Settings, Database, BrainCircuit, FileText, ChevronDown, Search } from 'lucide-react';
+import { LogOut, User, Settings, Database, BrainCircuit, FileText, ChevronDown, Search, History } from 'lucide-react';
 
 interface HeaderProps {
   user: UserProfile | null;
@@ -13,6 +13,7 @@ interface HeaderProps {
   onOpenMemory: () => void;
   onOpenResume: () => void;
   onOpenSearch: () => void;
+  onOpenHistory: () => void;
   onRefresh: () => void;
 }
 
@@ -27,6 +28,7 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenMemory,
   onOpenResume,
   onOpenSearch,
+  onOpenHistory,
   onRefresh,
 }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -174,6 +176,9 @@ export const Header: React.FC<HeaderProps> = ({
                   </button>
                   <button className="dropdown-item" onClick={() => { onOpenResume(); setIsMenuOpen(false); }}>
                     <FileText size={14} /> Sources
+                  </button>
+                  <button className="dropdown-item" onClick={() => { onOpenHistory(); setIsMenuOpen(false); }}>
+                    <History size={14} /> Application History
                   </button>
                   <div className="dropdown-divider" />
                   <button className="dropdown-item" style={{ color: 'var(--accent-danger)' }} onClick={() => { onResetDb(); setIsMenuOpen(false); }}>

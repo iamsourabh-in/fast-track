@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import path from 'path';
+import multer from 'multer';
 import { fileURLToPath } from 'url';
 import { config, LLMProviderType, ApplyModeType } from '../config/env.js';
 import { LLMFactory } from '../llm/llm.factory.js';
@@ -15,6 +16,7 @@ import { AgentStateTracker } from '../agent/agent-state.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 
 export function startDashboardServer(port: number = config.port) {
   const app = express();
@@ -145,15 +147,44 @@ export function startDashboardServer(port: number = config.port) {
     }
   });
 
-  app.post('/api/resume/parse-text', async (req, res) => {
-    const { text, sourceName } = req.body;
-    if (!text) return res.status(400).json({ error: 'Resume text is required' });
+  app.post('/api/resume/upload-pdf', upload.single('resumePdf'), async (req, res) => {
+    if (!req.file) return res.status(400).json({ error: 'PDF file is required' });
 
     try {
-      addLog(`📄 Parsing Raw Resume Text (${sourceName || 'File Upload'})...`);
-      const profile = await ResumeParserEngine.parseFromText(text, sourceName);
-      addLog(`✅ Successfully parsed candidate: ${profile.fullName}`);
+      addLog(`📄 Uploaded PDF resume: ${req.file.originalname} (${req.file.size} bytes)`);
+      const profile = await ResumeParserEngine.parseFromPdfBuffer(req.file.buffer, req.file.originalname);
+      addLog(`✅ Successfully extracted candidate profile from PDF: ${profile.fullName} (${profile.roleTitle})`);
       res.json({ success: true, profile });
+    } catch (err: any) {
+      addLog(`❌ Failed to parse PDF resume: ${err.message}`);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.post('/api/resume/synthesize', upload.single('resumePdf'), async (req, res) => {
+    const webUrl = req.body.url;
+    const pdfBuffer = req.file?.buffer;
+    const pdfFilename = req.file?.originalname;
+
+    try {
+      addLog(`🚀 Synthesizing profile from PDF (${pdfFilename || 'None'}) & Website (${webUrl || 'None'})...`);
+      const profile = await ResumeParserEngine.parseCombinedSource(pdfBuffer, pdfFilename, webUrl);
+      addLog(`✅ Combined synthesis complete! Updated profile for ${profile.fullName}`);
+      res.json({ success: true, profile });
+    } catch (err: any) {
+      addLog(`❌ Synthesis failed: ${err.message}`);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.post('/api/candidate/update', (req, res) => {
+    const p = req.body;
+    if (!p.fullName) return res.status(400).json({ error: 'fullName is required' });
+
+    try {
+      ResumeParserEngine.saveProfileToDb(p);
+      addLog(`💾 Updated candidate profile facts for ${p.fullName}`);
+      res.json({ success: true });
     } catch (err: any) {
       res.status(500).json({ error: err.message });
     }

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>FastApply — Autonomous AI Job Application Dashboard</title>
+  <title>FastApply Pro — Enterprise AI Job Application Platform</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -11,11 +11,12 @@
     :root {
       --bg-primary: #07090e;
       --bg-surface: #0f1420;
-      --bg-card: rgba(22, 30, 46, 0.7);
+      --bg-card: rgba(22, 30, 46, 0.75);
       --border-color: rgba(255, 255, 255, 0.08);
       --accent-blue: #3b82f6;
       --accent-purple: #8b5cf6;
       --accent-emerald: #10b981;
+      --accent-amber: #f59e0b;
       --accent-pink: #ec4899;
       --text-main: #f3f4f6;
       --text-muted: #9ca3af;
@@ -36,7 +37,7 @@
 
     header {
       border-bottom: 1px solid var(--border-color);
-      background: rgba(15, 20, 32, 0.8);
+      background: rgba(15, 20, 32, 0.85);
       backdrop-filter: blur(12px);
       padding: 1rem 2rem;
       display: flex; align-items: center; justify-content: space-between;
@@ -49,12 +50,12 @@
       -webkit-background-clip: text; -webkit-text-fill-color: transparent;
     }
 
-    .controls-group { display: flex; align-items: center; gap: 1rem; }
+    .controls-group { display: flex; align-items: center; gap: 0.75rem; }
 
     .select-box, .pill-btn, .action-pill {
       background: rgba(255, 255, 255, 0.05); border: 1px solid var(--border-color);
       color: var(--text-main); padding: 0.5rem 1rem; border-radius: 9999px;
-      font-size: 0.875rem; font-weight: 600; cursor: pointer; transition: all 0.2s ease;
+      font-size: 0.85rem; font-weight: 600; cursor: pointer; transition: all 0.2s ease;
     }
 
     .select-box:hover, .pill-btn:hover, .action-pill:hover {
@@ -78,9 +79,12 @@
     .stat-card {
       background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 16px;
       padding: 1.25rem; backdrop-filter: blur(10px); display: flex; flex-direction: column; gap: 0.5rem;
+      transition: transform 0.2s ease, border-color 0.2s ease;
     }
 
-    .stat-title { font-size: 0.8rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+    .stat-card:hover { transform: translateY(-2px); border-color: rgba(96, 165, 250, 0.3); }
+
+    .stat-title { font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
     .stat-value { font-size: 1.75rem; font-weight: 800; display: flex; align-items: baseline; gap: 0.5rem; }
     .stat-subtext { font-size: 0.8rem; color: var(--accent-emerald); }
 
@@ -134,7 +138,7 @@
     }
 
     .job-badge {
-      display: inline-block; align-self: flex-start; padding: 0.25rem 0.75rem; border-radius: 9999px;
+      display: inline-block; padding: 0.25rem 0.75rem; border-radius: 9999px;
       font-size: 0.75rem; font-weight: 700; background: rgba(59, 130, 246, 0.15); color: #60a5fa; border: 1px solid rgba(96, 165, 250, 0.3);
     }
 
@@ -188,6 +192,14 @@
     .status-applied { background: rgba(16, 185, 129, 0.2); color: #34d399; }
     .status-skipped { background: rgba(239, 68, 68, 0.2); color: #f87171; }
 
+    /* Dropzone Upload Area */
+    .dropzone {
+      border: 2px dashed rgba(96, 165, 250, 0.4); border-radius: 16px; padding: 2rem;
+      text-align: center; cursor: pointer; transition: all 0.2s ease;
+      background: rgba(59, 130, 246, 0.03);
+    }
+    .dropzone:hover { border-color: var(--accent-blue); background: rgba(59, 130, 246, 0.08); }
+
     /* Modal Popup */
     .modal-backdrop {
       position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
@@ -198,7 +210,7 @@
     .modal-box {
       background: #0f1420; border: 1px solid var(--border-color);
       border-radius: 24px; padding: 2rem; width: 90%; max-width: 750px;
-      max-height: 85vh; overflow-y: auto;
+      max-height: 88vh; overflow-y: auto;
       display: flex; flex-direction: column; gap: 1.25rem; box-shadow: 0 25px 50px rgba(0,0,0,0.5);
     }
   </style>
@@ -207,15 +219,19 @@
 
   <header>
     <div class="brand">
-      <span style="font-size: 1.5rem;">⚡</span> FastApply
+      <span style="font-size: 1.5rem;">⚡</span> FastApply Pro <span style="font-size: 0.7rem; background: rgba(59,130,246,0.2); color: #60a5fa; border: 1px solid rgba(96,165,250,0.3); padding: 0.15rem 0.5rem; border-radius: 9999px;">SaaS Enterprise</span>
     </div>
     <div class="controls-group">
+      <button class="action-pill" onclick="openProfileModal()" style="border-color: #a78bfa; color: #a78bfa;">
+        👤 Edit Profile
+      </button>
+
       <button class="action-pill" onclick="openMemoryModal()" style="border-color: #34d399; color: #34d399;">
         🧠 Memory Bank
       </button>
 
       <button class="action-pill" onclick="openResumeModal()" style="border-color: #60a5fa; color: #60a5fa;">
-        🌐 Resume Source
+        📄 PDF & Website Source
       </button>
 
       <select id="providerSelect" class="select-box" onchange="updateConfig()">
@@ -247,13 +263,13 @@
       </div>
       <div class="stat-card">
         <div class="stat-title">Active AI Model</div>
-        <div class="stat-value" id="activeModelStat" style="color: #60a5fa;">Gemini</div>
+        <div class="stat-value" id="activeModelStat" style="color: #60a5fa;">Ollama</div>
         <div class="stat-subtext">Provider Adapter Ready</div>
       </div>
-      <div class="stat-card" style="cursor: pointer;" onclick="openResumeModal()" title="Click to edit or sync resume URL">
-        <div class="stat-title">Candidate Profile & Source</div>
-        <div class="stat-value" style="font-size: 1.25rem;" id="candidateStat">Sourabh Rustagi</div>
-        <div class="stat-subtext" id="candidateSubtext">🔗 https://iamsourabh.in/</div>
+      <div class="stat-card" style="cursor: pointer;" onclick="openProfileModal()" title="Click to open full Candidate Profile Editor">
+        <div class="stat-title">Candidate Profile & Contact</div>
+        <div class="stat-value" style="font-size: 1.2rem;" id="candidateStat">Sourabh Rustagi</div>
+        <div class="stat-subtext" id="candidateSubtext">sourabh.rustagi@hotmail.com</div>
       </div>
     </div>
 
@@ -370,7 +386,7 @@
 
             <div style="display: flex; justify-content: space-between; font-size: 0.8rem; color: var(--text-muted);">
               <span>🌐 Browser: <strong style="color: white;">Playwright Stealth</strong></span>
-              <span>🤖 Provider: <strong style="color: #60a5fa;" id="flowProvider">GEMINI</strong></span>
+              <span>🤖 Provider: <strong style="color: #60a5fa;" id="flowProvider">OLLAMA</strong></span>
               <span>🧠 QA Engine: <strong style="color: #34d399;">SQLite Active</strong></span>
             </div>
           </div>
@@ -403,27 +419,84 @@
     </div>
   </main>
 
-  <!-- Resume Source Modal -->
+  <!-- PDF Resume Upload & Website Synthesis Modal -->
   <div class="modal-backdrop" id="resumeModal">
     <div class="modal-box">
-      <h2 style="font-weight: 800; font-size: 1.25rem;">📄 Candidate Resume & Profile Source</h2>
+      <h2 style="font-weight: 800; font-size: 1.25rem;">📄 Upload PDF Resume & Candidate Website</h2>
       <p style="font-size: 0.85rem; color: var(--text-muted);">
-        Select or provide a URL to parse your resume automatically into the FastApply Q&A Memory Engine.
+        Upload your PDF resume document and optionally add your personal portfolio link (`https://iamsourabh.in/`). FastApply AI will synthesize both into candidate profile memory.
       </p>
 
-      <div style="display: flex; flex-direction: column; gap: 0.5rem;">
-        <label style="font-size: 0.8rem; font-weight: 700; color: var(--text-muted);">Resume URL:</label>
+      <!-- PDF Dropzone -->
+      <div class="dropzone" id="pdfDropzone" onclick="document.getElementById('pdfFileInput').click()">
+        <div style="font-size: 2rem; margin-bottom: 0.5rem;">📥</div>
+        <div style="font-weight: 700; font-size: 0.95rem;">Drag & drop your PDF Resume here, or click to browse</div>
+        <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.25rem;" id="selectedFileName">Supports .PDF (Max 10MB)</div>
+        <input type="file" id="pdfFileInput" accept=".pdf" style="display: none;" onchange="handleFileSelect(event)" />
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 0.4rem;">
+        <label style="font-size: 0.8rem; font-weight: 700; color: var(--text-muted);">Candidate Website URL (Optional):</label>
         <input type="url" id="resumeUrlInput" class="input-text" value="https://iamsourabh.in/" placeholder="https://iamsourabh.in/" />
       </div>
 
       <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 0.5rem;">
         <button class="action-pill" onclick="closeResumeModal()" style="background: transparent;">Cancel</button>
-        <button class="action-pill" id="syncBtn" onclick="syncResumeUrl()" style="background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple)); border-color: transparent;">
-          ✨ Sync & Parse Resume
+        <button class="action-pill" id="syncBtn" onclick="synthesizeResumeSources()" style="background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple)); border-color: transparent; font-weight: 700;">
+          ✨ Synthesize & Parse Profile
         </button>
       </div>
 
       <div id="modalStatus" style="font-size: 0.8rem; color: var(--accent-emerald); display: none; text-align: center;"></div>
+    </div>
+  </div>
+
+  <!-- Candidate Profile Editor Modal -->
+  <div class="modal-backdrop" id="profileModal">
+    <div class="modal-box">
+      <h2 style="font-weight: 800; font-size: 1.25rem;">👤 Candidate Profile & Executive Facts</h2>
+      <p style="font-size: 0.85rem; color: var(--text-muted);">
+        View and edit all candidate profile facts used by the agent during automated job applications.
+      </p>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+        <div>
+          <label style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted);">Full Name:</label>
+          <input type="text" id="profFullName" class="input-text" />
+        </div>
+        <div>
+          <label style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted);">Primary Job Title:</label>
+          <input type="text" id="profRoleTitle" class="input-text" />
+        </div>
+        <div>
+          <label style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted);">Email Address:</label>
+          <input type="email" id="profEmail" class="input-text" />
+        </div>
+        <div>
+          <label style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted);">Phone Number:</label>
+          <input type="text" id="profPhone" class="input-text" />
+        </div>
+        <div>
+          <label style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted);">Years Experience:</label>
+          <input type="number" id="profYOE" class="input-text" />
+        </div>
+        <div>
+          <label style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted);">Location:</label>
+          <input type="text" id="profLocation" class="input-text" />
+        </div>
+      </div>
+
+      <div>
+        <label style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted);">Professional Summary:</label>
+        <textarea id="profSummary" class="input-text" style="height: 70px; border-radius: 12px; resize: vertical;"></textarea>
+      </div>
+
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 0.5rem;">
+        <button class="action-pill" onclick="closeProfileModal()" style="background: transparent;">Cancel</button>
+        <button class="action-pill" onclick="saveCandidateProfile()" style="background: linear-gradient(135deg, var(--accent-emerald), #059669); border-color: transparent;">
+          💾 Save Candidate Profile
+        </button>
+      </div>
     </div>
   </div>
 
@@ -468,6 +541,7 @@
     let currentJobsFeed = [];
     let currentJobIndex = 0;
     let cachedMemories = [];
+    let selectedPdfFile = null;
 
     function openResumeModal() { document.getElementById('resumeModal').classList.add('active'); }
     function closeResumeModal() { document.getElementById('resumeModal').classList.remove('active'); }
@@ -477,6 +551,108 @@
       fetchMemories();
     }
     function closeMemoryModal() { document.getElementById('memoryModal').classList.remove('active'); }
+
+    function openProfileModal() {
+      document.getElementById('profileModal').classList.add('active');
+      loadProfileIntoEditor();
+    }
+    function closeProfileModal() { document.getElementById('profileModal').classList.remove('active'); }
+
+    function handleFileSelect(event) {
+      const file = event.target.files[0];
+      if (file) {
+        selectedPdfFile = file;
+        document.getElementById('selectedFileName').innerText = `📄 ${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
+        document.getElementById('selectedFileName').style.color = '#60a5fa';
+      }
+    }
+
+    async function synthesizeResumeSources() {
+      const url = document.getElementById('resumeUrlInput').value.trim();
+      const statusEl = document.getElementById('modalStatus');
+      const syncBtn = document.getElementById('syncBtn');
+
+      if (!selectedPdfFile && !url) {
+        alert('Please select a PDF resume file or enter a portfolio website URL.');
+        return;
+      }
+
+      statusEl.style.display = 'block';
+      statusEl.style.color = '#60a5fa';
+      statusEl.innerText = '⏳ Extracting and synthesizing PDF & Website sources with AI...';
+      syncBtn.disabled = true;
+
+      const formData = new FormData();
+      if (selectedPdfFile) formData.append('resumePdf', selectedPdfFile);
+      if (url) formData.append('url', url);
+
+      try {
+        const res = await fetch('/api/resume/synthesize', {
+          method: 'POST',
+          body: formData,
+        });
+        const data = await res.json();
+
+        if (data.success) {
+          statusEl.style.color = '#34d399';
+          statusEl.innerText = `✅ Profile successfully synthesized for ${data.profile.fullName}!`;
+          setTimeout(() => {
+            closeResumeModal();
+            refreshAll();
+          }, 1500);
+        } else {
+          statusEl.style.color = '#f87171';
+          statusEl.innerText = `❌ Error: ${data.error}`;
+        }
+      } catch (err) {
+        statusEl.style.color = '#f87171';
+        statusEl.innerText = `❌ Request failed: ${err.message}`;
+      } finally {
+        syncBtn.disabled = false;
+      }
+    }
+
+    async function loadProfileIntoEditor() {
+      try {
+        const res = await fetch('/api/stats');
+        const data = await res.json();
+        if (data.candidate) {
+          const c = data.candidate;
+          document.getElementById('profFullName').value = c.fullName || c.full_name || 'Sourabh Rustagi';
+          document.getElementById('profRoleTitle').value = c.roleTitle || c.resume_text?.split('|')[0]?.trim() || 'Chief Systems & DevOps Engineer';
+          document.getElementById('profEmail').value = c.email || 'sourabh.rustagi@hotmail.com';
+          document.getElementById('profPhone').value = c.phone || '+91 8470894772';
+          document.getElementById('profYOE').value = c.yearsExperience || c.years_experience || 12;
+          document.getElementById('profLocation').value = c.location || 'New Delhi, India / Remote';
+          document.getElementById('profSummary').value = c.summary || c.resume_text || '';
+        }
+      } catch (err) {}
+    }
+
+    async function saveCandidateProfile() {
+      const payload = {
+        fullName: document.getElementById('profFullName').value.trim(),
+        roleTitle: document.getElementById('profRoleTitle').value.trim(),
+        email: document.getElementById('profEmail').value.trim(),
+        phone: document.getElementById('profPhone').value.trim(),
+        yearsExperience: Number(document.getElementById('profYOE').value),
+        location: document.getElementById('profLocation').value.trim(),
+        summary: document.getElementById('profSummary').value.trim(),
+      };
+
+      try {
+        const res = await fetch('/api/candidate/update', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        const data = await res.json();
+        if (data.success) {
+          closeProfileModal();
+          refreshAll();
+        }
+      } catch (err) {}
+    }
 
     async function fetchMemories() {
       try {
@@ -620,44 +796,6 @@
       } catch (err) {}
     }
 
-    async function syncResumeUrl() {
-      const url = document.getElementById('resumeUrlInput').value.trim();
-      if (!url) return;
-
-      const statusEl = document.getElementById('modalStatus');
-      const syncBtn = document.getElementById('syncBtn');
-      statusEl.style.display = 'block';
-      statusEl.style.color = '#60a5fa';
-      statusEl.innerText = '⏳ Fetching and parsing candidate profile...';
-      syncBtn.disabled = true;
-
-      try {
-        const res = await fetch('/api/resume/parse-url', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ url }),
-        });
-        const data = await res.json();
-
-        if (data.success) {
-          statusEl.style.color = '#34d399';
-          statusEl.innerText = `✅ Successfully parsed resume for ${data.profile.fullName}!`;
-          setTimeout(() => {
-            closeResumeModal();
-            refreshAll();
-          }, 1500);
-        } else {
-          statusEl.style.color = '#f87171';
-          statusEl.innerText = `❌ Error parsing URL: ${data.error}`;
-        }
-      } catch (err) {
-        statusEl.style.color = '#f87171';
-        statusEl.innerText = `❌ Request failed: ${err.message}`;
-      } finally {
-        syncBtn.disabled = false;
-      }
-    }
-
     async function fetchStats() {
       try {
         const res = await fetch('/api/stats');
@@ -672,8 +810,8 @@
         
         if (data.candidate) {
           document.getElementById('candidateStat').innerText = data.candidate.fullName || data.candidate.full_name;
-          if (data.candidate.resumeSourceUrl || data.candidate.portfolio_url) {
-            document.getElementById('candidateSubtext').innerText = `🔗 ${data.candidate.resumeSourceUrl || data.candidate.portfolio_url}`;
+          if (data.candidate.email) {
+            document.getElementById('candidateSubtext').innerText = data.candidate.email;
           }
         }
       } catch (err) {}

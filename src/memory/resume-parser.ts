@@ -1,3 +1,5 @@
+import * as pdfParseModule from 'pdf-parse';
+const pdfParse = (pdfParseModule as any).default || pdfParseModule;
 import { db } from './db.js';
 import { LLMFactory } from '../llm/llm.factory.js';
 import { QAMemoryEngine } from './qa-memory.js';
@@ -20,6 +22,64 @@ export interface ParsedCandidateProfile {
 }
 
 export class ResumeParserEngine {
+  /**
+   * Parses PDF file buffer into structured Candidate Profile.
+   */
+  public static async parseFromPdfBuffer(pdfBuffer: Buffer, originalFilename: string = 'Resume.pdf'): Promise<ParsedCandidateProfile> {
+    console.log(`[ResumeParserEngine] 📄 Extracting text from PDF resume: ${originalFilename} (${pdfBuffer.length} bytes)...`);
+    try {
+      const pdfData = await pdfParse(pdfBuffer);
+      const pdfText = (pdfData.text || '').replace(/\s+/g, ' ').trim();
+      console.log(`[ResumeParserEngine] Extracted ${pdfText.length} characters of text from PDF ${originalFilename}.`);
+      return this.parseFromText(pdfText, `PDF Upload: ${originalFilename}`);
+    } catch (err: any) {
+      console.error(`[ResumeParserEngine] Failed to parse PDF buffer: ${err.message}`);
+      throw new Error(`PDF parsing failed: ${err.message}`);
+    }
+  }
+
+  /**
+   * Synthesizes and merges information from BOTH a PDF resume upload and a candidate website URL.
+   */
+  public static async parseCombinedSource(pdfBuffer?: Buffer, pdfFilename?: string, webUrl?: string): Promise<ParsedCandidateProfile> {
+    console.log(`[ResumeParserEngine] 🚀 Merging candidate profile from PDF (${pdfFilename || 'None'}) and Website (${webUrl || 'None'})...`);
+    let combinedText = '';
+
+    if (pdfBuffer) {
+      try {
+        const pdfData = await pdfParse(pdfBuffer);
+        combinedText += `\n--- CANDIDATE RESUME PDF DOCUMENT (${pdfFilename || 'Resume.pdf'}) ---\n` + pdfData.text + '\n';
+      } catch (err: any) {
+        console.warn(`[ResumeParserEngine] Error reading PDF buffer: ${err.message}`);
+      }
+    }
+
+    if (webUrl) {
+      try {
+        const response = await fetch(webUrl, {
+          headers: { 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36' },
+        });
+        if (response.ok) {
+          const html = await response.text();
+          const cleanText = html
+            .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+            .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '')
+            .replace(/<[^>]+>/g, ' ')
+            .replace(/\s+/g, ' ')
+            .slice(0, 8000);
+          combinedText += `\n--- CANDIDATE PORTFOLIO WEBSITE (${webUrl}) ---\n` + cleanText + '\n';
+        }
+      } catch (err: any) {
+        console.warn(`[ResumeParserEngine] Error fetching website URL: ${err.message}`);
+      }
+    }
+
+    if (!combinedText.trim()) {
+      throw new Error('No candidate content provided. Please upload a PDF resume or provide a valid website URL.');
+    }
+
+    return this.parseFromText(combinedText, webUrl || pdfFilename || 'Combined PDF + Website Source');
+  }
   /**
    * Fetches content from a URL, strips HTML, and uses LLM to extract candidate profile.
    */

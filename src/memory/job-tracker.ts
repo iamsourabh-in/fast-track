@@ -40,14 +40,15 @@ export class JobTrackerEngine {
     const key = this.generateJobKey(company, title, jobUrl);
     const existing = await AppliedJob.findOne({
       userId,
-      $or: [{ jobKey: key }, { jobUrl }]
+      $or: [{ jobKey: key }, { jobUrl }],
+      status: { $ne: 'pending' }
     }).lean();
     if (existing) return true;
 
     const userJob = await UserJob.findOne({
       userId,
       $or: [{ jobKey: key }, { jobUrl }],
-      status: { $ne: 'queued' }
+      status: { $nin: ['queued', 'pending'] }
     }).lean();
     return !!userJob;
   }

@@ -162,17 +162,21 @@ fast-track/
 ### Prerequisites
 - Node.js >= 20.x
 - npm / pnpm / yarn
+- Docker (for running MongoDB)
 - Ollama (Optional, if running local LLMs: `ollama run llama3.2`)
 
 ### Installation
 
 ```bash
 # Clone the repository
-git clone https://github.com/your-username/fast-track.git
+git clone https://github.com/iamsourabh-in/fast-track.git
 cd fast-track
 
 # Install dependencies
 npm install
+
+# Start MongoDB locally via Docker
+docker run -d --name fast-track-mongo -p 27017:27017 mongo:7.0
 
 # Copy environment template
 cp .env.example .env
@@ -194,19 +198,24 @@ OLLAMA_MODEL=llama3.2
 APPLY_MODE=autonomous # 'copilot' | 'autonomous' | 'stealth' | 'swipe'
 MAX_DAILY_APPLICATIONS=250
 HEADLESS=false
+PORT=3000
+
+# Database & Authentication
+MONGODB_URI=mongodb://localhost:27017/fasttrack
+JWT_SECRET=your_secure_jwt_secret_key
 ```
 
 ### Running FastApply
 
 ```bash
-# Build the TypeScript project
+# Build the React Frontend and TypeScript Backend
 npm run build
 
-# Start the Agent & Web Dashboard
+# Start the Node.js Server & Web Dashboard
 npm start
 
-# Launch in specific mode via CLI
-npm run dev -- --mode=swipe --provider=ollama
+# For local development with live reload
+npm run dev
 ```
 
 ---

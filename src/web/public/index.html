@@ -307,7 +307,12 @@
       <div class="swipe-section">
         <div class="swipe-card" id="swipeCard">
           <div>
-            <div class="job-badge" id="cardSalary">$180k - $240k</div>
+            <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+              <div class="job-badge" id="cardSalary">$180k - $240k</div>
+              <a id="cardApplyLink" href="#" target="_blank" rel="noopener noreferrer" class="action-pill" style="display: inline-flex; align-items: center; gap: 0.4rem; text-decoration: none; border-color: #60a5fa; color: #60a5fa; font-size: 0.75rem; padding: 0.25rem 0.75rem;">
+                🔗 Apply Manually ↗
+              </a>
+            </div>
             <div class="job-title" id="cardTitle">Senior AI Engineer</div>
             <div class="job-company" id="cardCompany">Google • Mountain View, CA</div>
             <div class="job-details" id="cardTags">
@@ -317,7 +322,7 @@
             </div>
           </div>
           <div style="font-size: 0.85rem; color: var(--text-muted); line-height: 1.5;">
-            FastApply AI will automatically fill forms using candidate profile parsed from your resume source, bypass repeat questions using Q&A memory, and submit your application.
+            FastApply AI will automatically fill forms using candidate profile parsed from your resume source, bypass repeat questions using Q&A memory, and submit your application. Or click Apply Manually above to open the target URL directly.
           </div>
         </div>
 
@@ -684,11 +689,13 @@
     }
 
     function renderCard() {
+      const applyLink = document.getElementById('cardApplyLink');
       if (currentJobIndex >= currentJobsFeed.length) {
         document.getElementById('cardTitle').innerText = 'All Jobs Processed!';
         document.getElementById('cardCompany').innerText = 'Check back later or refresh feeds.';
         document.getElementById('cardSalary').innerText = 'Queue Empty';
         document.getElementById('cardTags').innerHTML = '';
+        if (applyLink) applyLink.style.display = 'none';
         return;
       }
 
@@ -697,6 +704,16 @@
       document.getElementById('cardCompany').innerText = `${job.company} • ${job.location}`;
       document.getElementById('cardSalary').innerText = job.salary || '$160k - $240k';
       document.getElementById('cardTags').innerHTML = (job.tags || []).map(t => `<span class="tag">${t}</span>`).join('');
+
+      if (applyLink) {
+        if (job.url) {
+          applyLink.href = job.url;
+          applyLink.style.display = 'inline-flex';
+          applyLink.setAttribute('title', `Open direct application page: ${job.url}`);
+        } else {
+          applyLink.style.display = 'none';
+        }
+      }
     }
 
     async function swipeRight() {

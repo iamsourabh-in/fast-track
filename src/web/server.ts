@@ -383,6 +383,30 @@ export function startDashboardServer(port: number = config.port) {
     res.json({ logs });
   });
 
+  // 8. Reset Entire Database & Start Fresh
+  app.post('/api/db/reset', (req, res) => {
+    try {
+      db.prepare('DELETE FROM candidate_profile').run();
+      db.prepare('DELETE FROM qa_memory').run();
+      db.prepare('DELETE FROM user_jobs').run();
+      db.prepare('DELETE FROM applied_jobs').run();
+      db.prepare('DELETE FROM audit_logs').run();
+      db.prepare('DELETE FROM users').run();
+
+      // Seed fresh default admin account
+      db.prepare(`
+        INSERT INTO users (id, email, password_hash, full_name, role)
+        VALUES (1, 'sourabh.rustagi@hotmail.com', '$2a$10$wE1V2vY9L8A2oM0wJ5nJd.8O2rS6T5u.qZ7mJ5W5u3qZ7mJ5W5u3q', 'Sourabh Rustagi', 'admin')
+      `).run();
+
+      addLog(`💣 RESET DATABASE: Purged candidate profiles, Q&A memories, user jobs, history, and audit logs.`);
+      res.json({ success: true, message: 'Database reset successfully!' });
+    } catch (err: any) {
+      addLog(`❌ Database reset failed: ${err.message}`);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
   // Fallback route -> serve index.html
   app.use((req, res) => {
     res.sendFile(path.join(publicDir, 'index.html'));

@@ -225,8 +225,16 @@
       <span style="font-size: 1.5rem;">⚡</span> FastApply Pro <span style="font-size: 0.7rem; background: rgba(59,130,246,0.2); color: #60a5fa; border: 1px solid rgba(96,165,250,0.3); padding: 0.15rem 0.5rem; border-radius: 9999px;">SaaS Enterprise</span>
     </div>
     <div class="controls-group">
-      <button class="action-pill" id="userAuthBtn" onclick="handleAuthClick()" style="border-color: #ec4899; color: #ec4899;">
-        🔑 Log In / Register
+      <button class="action-pill" id="userAuthBtn" onclick="handleAuthClick()" style="border-color: #34d399; color: #34d399;">
+        👤 Logged In
+      </button>
+
+      <button class="action-pill" id="logoutBtn" onclick="logoutUser()" style="border-color: #ec4899; color: #ec4899;">
+        🔒 Logout
+      </button>
+
+      <button class="action-pill" onclick="resetDatabaseAndStartFresh()" style="border-color: #ef4444; color: #ef4444;" title="Purge database tables and start 100% fresh">
+        💣 Reset DB & Start Fresh
       </button>
 
       <button class="action-pill" onclick="openProfileModal()" style="border-color: #a78bfa; color: #a78bfa;">
@@ -737,16 +745,43 @@
       openAuthModal();
     }
 
+    async function resetDatabaseAndStartFresh() {
+      if (!confirm('⚠️ Are you sure you want to flush the entire database? This will clear all candidate profiles, Q&A memories, user jobs, and application history so you can start 100% fresh.')) {
+        return;
+      }
+
+      try {
+        const res = await fetch('/api/db/reset', { method: 'POST' });
+        const data = await res.json();
+        if (data.success) {
+          currentUserToken = '';
+          currentUserProfile = null;
+          localStorage.removeItem('fastapply_token');
+          alert('💥 Database reset successfully! You can now register or log in fresh.');
+          updateAuthUserUI();
+          refreshAll();
+          openAuthModal();
+        } else {
+          alert(`❌ Reset failed: ${data.error}`);
+        }
+      } catch (err) {
+        alert(`❌ Reset error: ${err.message}`);
+      }
+    }
+
     function updateAuthUserUI() {
       const btn = document.getElementById('userAuthBtn');
+      const logoutBtn = document.getElementById('logoutBtn');
       if (currentUserProfile) {
-        btn.innerHTML = `👤 ${currentUserProfile.fullName} (Logout)`;
+        btn.innerHTML = `👤 ${currentUserProfile.fullName}`;
         btn.style.borderColor = '#34d399';
         btn.style.color = '#34d399';
+        if (logoutBtn) logoutBtn.style.display = 'inline-flex';
       } else {
         btn.innerHTML = `🔑 Log In / Register`;
         btn.style.borderColor = '#ec4899';
         btn.style.color = '#ec4899';
+        if (logoutBtn) logoutBtn.style.display = 'none';
       }
     }
 

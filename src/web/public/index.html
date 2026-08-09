@@ -353,11 +353,12 @@
         <div class="panel">
           <div class="panel-header">
             <div class="panel-title">
-              <span>💻</span> Agent Execution Flow & Terminal
+              <span>💻</span> Agent Execution Flow & Audit Logs
             </div>
             <div style="display: flex; gap: 0.4rem;">
               <button class="tab-btn active" id="tabTerminal" onclick="switchView('terminal')">Console Stream</button>
               <button class="tab-btn" id="tabFlow" onclick="switchView('flow')">Visual Pipeline Flow</button>
+              <button class="tab-btn" id="tabAudit" onclick="switchView('audit')">📜 Audit Trail</button>
             </div>
           </div>
 
@@ -389,6 +390,11 @@
               <span>🤖 Provider: <strong style="color: #60a5fa;" id="flowProvider">OLLAMA</strong></span>
               <span>🧠 QA Engine: <strong style="color: #34d399;">SQLite Active</strong></span>
             </div>
+          </div>
+
+          <!-- Audit Logs View -->
+          <div class="terminal-window" id="auditWindow" style="display: none; color: #60a5fa;">
+            <div>[Security] Multi-tenant audit trail initialized for user #1 (sourabh.rustagi@hotmail.com).</div>
           </div>
         </div>
 
@@ -721,17 +727,33 @@
     }
 
     function switchView(tab) {
-      if (tab === 'terminal') {
-        document.getElementById('terminalWindow').style.display = 'flex';
-        document.getElementById('flowWindow').style.display = 'none';
-        document.getElementById('tabTerminal').classList.add('active');
-        document.getElementById('tabFlow').classList.remove('active');
-      } else {
-        document.getElementById('terminalWindow').style.display = 'none';
-        document.getElementById('flowWindow').style.display = 'flex';
-        document.getElementById('tabFlow').classList.add('active');
-        document.getElementById('tabTerminal').classList.remove('active');
+      document.getElementById('terminalWindow').style.display = tab === 'terminal' ? 'flex' : 'none';
+      document.getElementById('flowWindow').style.display = tab === 'flow' ? 'flex' : 'none';
+      document.getElementById('auditWindow').style.display = tab === 'audit' ? 'flex' : 'none';
+
+      document.getElementById('tabTerminal').classList.toggle('active', tab === 'terminal');
+      document.getElementById('tabFlow').classList.toggle('active', tab === 'flow');
+      document.getElementById('tabAudit').classList.toggle('active', tab === 'audit');
+
+      if (tab === 'audit') {
+        fetchAuditLogs();
       }
+    }
+
+    async function fetchAuditLogs() {
+      try {
+        const res = await fetch('/api/audit-logs');
+        const data = await res.json();
+        const win = document.getElementById('auditWindow');
+        if (!data.logs || data.logs.length === 0) {
+          win.innerHTML = '<div>[Audit] No security audit logs recorded yet.</div>';
+          return;
+        }
+
+        win.innerHTML = data.logs.map(l => `
+          <div><span style="color: var(--text-muted);">[${new Date(l.created_at).toLocaleTimeString()}]</span> <strong style="color: #60a5fa;">[${l.action}]</strong> ${l.details}</div>
+        `).join('');
+      } catch (err) {}
     }
 
     async function fetchAgentStatus() {

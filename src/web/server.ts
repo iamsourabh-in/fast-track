@@ -13,6 +13,8 @@ import { ResumeParserEngine } from '../memory/resume-parser.js';
 import { JobSearchEngine } from '../browser/job-search.js';
 import { RealJobScraper, RealJobPosting } from '../browser/real-job-scraper.js';
 import { AgentStateTracker } from '../agent/agent-state.js';
+import { AuthService, AuthenticatedRequest } from '../auth/auth.service.js';
+import { AuditLogger } from '../memory/audit-logger.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -74,6 +76,43 @@ export function startDashboardServer(port: number = config.port) {
   ];
 
   // REST API Endpoints
+
+  // Authentication & Security Routes
+  app.post('/api/auth/register', async (req, res) => {
+    const { email, password, fullName } = req.body;
+    if (!email || !password || !fullName) {
+      return res.status(400).json({ error: 'email, password, and fullName are required' });
+    }
+    try {
+      const auth = await AuthService.register(email, password, fullName, req.ip);
+      res.json({ success: true, ...auth });
+    } catch (err: any) {
+      res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.post('/api/auth/login', async (req, res) => {
+    const { email, password } = req.body;
+    if (!email || !password) {
+      return res.status(400).json({ error: 'email and password are required' });
+    }
+    try {
+      const auth = await AuthService.login(email, password, req.ip);
+      res.json({ success: true, ...auth });
+    } catch (err: any) {
+      res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.get('/api/auth/me', AuthService.authenticateToken, (req: AuthenticatedRequest, res) => {
+    res.json({ user: req.user });
+  });
+
+  app.get('/api/audit-logs', AuthService.authenticateToken, (req: AuthenticatedRequest, res) => {
+    const userId = req.user?.id || 1;
+    const logs = AuditLogger.getLogs(userId, 50);
+    res.json({ logs });
+  });
 
   // 1. Get Dashboard Stats & Config
   app.get('/api/stats', (req, res) => {

@@ -15,8 +15,27 @@ db.pragma('journal_mode = WAL');
 
 export function initDatabase() {
   db.exec(`
+    CREATE TABLE IF NOT EXISTS users (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      email TEXT NOT NULL UNIQUE,
+      password_hash TEXT NOT NULL,
+      full_name TEXT NOT NULL,
+      role TEXT DEFAULT 'user',
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS audit_logs (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      action TEXT NOT NULL,
+      details TEXT,
+      ip_address TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+
     CREATE TABLE IF NOT EXISTS candidate_profile (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER DEFAULT 1,
       full_name TEXT NOT NULL,
       email TEXT NOT NULL,
       phone TEXT,
@@ -34,7 +53,8 @@ export function initDatabase() {
 
     CREATE TABLE IF NOT EXISTS qa_memory (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
-      question_normalized TEXT NOT NULL UNIQUE,
+      user_id INTEGER DEFAULT 1,
+      question_normalized TEXT NOT NULL,
       question_raw TEXT NOT NULL,
       answer TEXT NOT NULL,
       confidence REAL DEFAULT 1.0,
@@ -45,7 +65,8 @@ export function initDatabase() {
 
     CREATE TABLE IF NOT EXISTS applied_jobs (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
-      job_key TEXT NOT NULL UNIQUE,
+      user_id INTEGER DEFAULT 1,
+      job_key TEXT NOT NULL,
       company TEXT NOT NULL,
       title TEXT NOT NULL,
       location TEXT,
@@ -57,14 +78,27 @@ export function initDatabase() {
     );
   `);
 
+  // Seed default user account if empty
+  const userCount = db.prepare('SELECT COUNT(*) as count FROM users').get() as { count: number };
+  if (userCount.count === 0) {
+    // Default password 'password123' bcrypt hash
+    const defaultHash = '$2a$10$wE1V2vY9L8A2oM0wJ5nJd.8O2rS6T5u.qZ7mJ5W5u3qZ7mJ5W5u3q'; // Fallback pre-computed hash or insert directly
+    db.prepare(`
+      INSERT INTO users (id, email, password_hash, full_name, role)
+      VALUES (1, 'sourabh.rustagi@hotmail.com', '${defaultHash}', 'Sourabh Rustagi', 'admin')
+    `).run();
+    console.log('[Database] Seeded initial user account (sourabh.rustagi@hotmail.com).');
+  }
+
   // Seed default candidate profile if empty
   const count = db.prepare('SELECT COUNT(*) as count FROM candidate_profile').get() as { count: number };
   if (count.count === 0) {
     db.prepare(`
       INSERT INTO candidate_profile (
-        full_name, email, phone, linkedin_url, github_url, portfolio_url,
+        user_id, full_name, email, phone, linkedin_url, github_url, portfolio_url,
         years_experience, location, requires_sponsorship, authorized_to_work, resume_text
       ) VALUES (
+        1,
         'Sourabh Rustagi',
         'sourabh.rustagi@hotmail.com',
         '+91 8470894772',

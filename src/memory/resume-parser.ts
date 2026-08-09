@@ -188,7 +188,7 @@ Return ONLY a JSON object matching this schema:
   /**
    * Persists profile into SQLite candidate_profile table.
    */
-  public static saveProfileToDb(p: ParsedCandidateProfile): void {
+  public static saveProfileToDb(p: ParsedCandidateProfile, userId: number = 1): void {
     const fullName = p.fullName || 'Sourabh Rustagi';
     const email = p.email || 'sourabh.rustagi@hotmail.com';
     const phone = p.phone || '+91 8470894772';
@@ -198,45 +198,42 @@ Return ONLY a JSON object matching this schema:
     const skillsList = Array.isArray(p.skills) && p.skills.length > 0 ? p.skills.join(', ') : 'DevOps, Systems Engineering, TypeScript';
     const summaryText = p.summary || 'Chief Systems & DevOps Engineer with 12+ years experience.';
 
-    db.prepare(`
-      INSERT INTO candidate_profile (
-        id, full_name, email, phone, linkedin_url, github_url, portfolio_url,
-        years_experience, location, requires_sponsorship, authorized_to_work, resume_text, updated_at
-      ) VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-      ON CONFLICT(id) DO UPDATE SET
-        full_name = excluded.full_name,
-        email = excluded.email,
-        phone = excluded.phone,
-        linkedin_url = excluded.linkedin_url,
-        github_url = excluded.github_url,
-        portfolio_url = excluded.portfolio_url,
-        years_experience = excluded.years_experience,
-        location = excluded.location,
-        requires_sponsorship = excluded.requires_sponsorship,
-        authorized_to_work = excluded.authorized_to_work,
-        resume_text = excluded.resume_text,
-        updated_at = CURRENT_TIMESTAMP
-    `).run(
-      fullName,
-      email,
-      phone,
-      linkedinUrl,
-      githubUrl,
-      p.resumeSourceUrl || linkedinUrl || '',
-      p.yearsExperience || 12,
-      p.location || 'New Delhi, India / Remote',
-      p.requiresSponsorship ? 1 : 0,
-      p.authorizedToWork !== undefined ? (p.authorizedToWork ? 1 : 0) : 1,
-      `${roleTitle} | ${summaryText} | Skills: ${skillsList}`
-    );
+    const existing = db.prepare('SELECT id FROM candidate_profile WHERE user_id = ?').get(userId) as { id: number } | undefined;
 
-    console.log(`[ResumeParserEngine] Updated candidate_profile DB record for ${fullName}.`);
+    if (existing) {
+      db.prepare(`
+        UPDATE candidate_profile SET
+          full_name = ?, email = ?, phone = ?, linkedin_url = ?, github_url = ?, portfolio_url = ?,
+          years_experience = ?, location = ?, requires_sponsorship = ?, authorized_to_work = ?, resume_text = ?, updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+      `).run(
+        fullName, email, phone, linkedinUrl, githubUrl, p.resumeSourceUrl || linkedinUrl || '',
+        p.yearsExperience || 12, p.location || 'New Delhi, India / Remote',
+        p.requiresSponsorship ? 1 : 0, p.authorizedToWork !== undefined ? (p.authorizedToWork ? 1 : 0) : 1,
+        `${roleTitle} | ${summaryText} | Skills: ${skillsList}`, existing.id
+      );
+    } else {
+      db.prepare(`
+        INSERT INTO candidate_profile (
+          user_id, full_name, email, phone, linkedin_url, github_url, portfolio_url,
+          years_experience, location, requires_sponsorship, authorized_to_work, resume_text
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).run(
+        userId, fullName, email, phone, linkedinUrl, githubUrl, p.resumeSourceUrl || linkedinUrl || '',
+        p.yearsExperience || 12, p.location || 'New Delhi, India / Remote',
+        p.requiresSponsorship ? 1 : 0, p.authorizedToWork !== undefined ? (p.authorizedToWork ? 1 : 0) : 1,
+        `${roleTitle} | ${summaryText} | Skills: ${skillsList}`
+      );
+    }
+
+    console.log(`[ResumeParserEngine] Updated candidate_profile DB record for user #${userId} (${fullName}).`);
+    this.seedQAMemoryFromProfile(p, userId);
   }
 
   /**
    * Automatically populates key Q&A answers in memory bank based on candidate profile.
    */
-  private static seedQAMemoryFromProfile(p: ParsedCandidateProfile): void {
+  private static seedQAMemoryFromProfile(p: ParsedCandidateProfile, userId: number = 1): void {
     const fullName = p.fullName || 'Sourabh Rustagi';
     const nameParts = fullName.split(' ');
     const firstName = nameParts[0] || 'Sourabh';
@@ -248,34 +245,34 @@ Return ONLY a JSON object matching this schema:
     const skillsList = Array.isArray(p.skills) && p.skills.length > 0 ? p.skills.join(', ') : 'DevOps, Systems Engineering, TypeScript';
     const summaryText = p.summary || 'Chief Systems & DevOps Engineer with 12+ years experience.';
 
-    QAMemoryEngine.saveAnswer('First Name', firstName, 1.0);
-    QAMemoryEngine.saveAnswer('Last Name', lastName, 1.0);
-    QAMemoryEngine.saveAnswer('Full Name', fullName, 1.0);
-    QAMemoryEngine.saveAnswer('Name', fullName, 1.0);
-    QAMemoryEngine.saveAnswer('What is your full name?', fullName, 1.0);
+    QAMemoryEngine.saveAnswer('First Name', firstName, 1.0, userId);
+    QAMemoryEngine.saveAnswer('Last Name', lastName, 1.0, userId);
+    QAMemoryEngine.saveAnswer('Full Name', fullName, 1.0, userId);
+    QAMemoryEngine.saveAnswer('Name', fullName, 1.0, userId);
+    QAMemoryEngine.saveAnswer('What is your full name?', fullName, 1.0, userId);
 
     // Contact info Q&A seeds
-    QAMemoryEngine.saveAnswer('Email', email, 1.0);
-    QAMemoryEngine.saveAnswer('Email Address', email, 1.0);
-    QAMemoryEngine.saveAnswer('What is your email address?', email, 1.0);
-    QAMemoryEngine.saveAnswer('Phone', phone, 1.0);
-    QAMemoryEngine.saveAnswer('Phone Number', phone, 1.0);
-    QAMemoryEngine.saveAnswer('Mobile', phone, 1.0);
-    QAMemoryEngine.saveAnswer('Email or phone', `${email} / ${phone}`, 1.0);
+    QAMemoryEngine.saveAnswer('Email', email, 1.0, userId);
+    QAMemoryEngine.saveAnswer('Email Address', email, 1.0, userId);
+    QAMemoryEngine.saveAnswer('What is your email address?', email, 1.0, userId);
+    QAMemoryEngine.saveAnswer('Phone', phone, 1.0, userId);
+    QAMemoryEngine.saveAnswer('Phone Number', phone, 1.0, userId);
+    QAMemoryEngine.saveAnswer('Mobile', phone, 1.0, userId);
+    QAMemoryEngine.saveAnswer('Email or phone', `${email} / ${phone}`, 1.0, userId);
 
-    QAMemoryEngine.saveAnswer('How many years of experience do you have?', `${p.yearsExperience || 12} years`, 1.0);
-    QAMemoryEngine.saveAnswer('What is your current or target job title?', roleTitle, 1.0);
-    QAMemoryEngine.saveAnswer('Do you require visa sponsorship now or in the future?', p.requiresSponsorship ? 'Yes' : 'No', 1.0);
-    QAMemoryEngine.saveAnswer('Are you legally authorized to work in the United States?', p.authorizedToWork ? 'Yes' : 'No', 1.0);
-    QAMemoryEngine.saveAnswer('What is your LinkedIn profile URL?', linkedinUrl, 1.0);
-    QAMemoryEngine.saveAnswer('What are your top core technical skills?', skillsList, 1.0);
-    QAMemoryEngine.saveAnswer('Please provide a brief summary of your background.', summaryText, 1.0);
+    QAMemoryEngine.saveAnswer('How many years of experience do you have?', `${p.yearsExperience || 12} years`, 1.0, userId);
+    QAMemoryEngine.saveAnswer('What is your current or target job title?', roleTitle, 1.0, userId);
+    QAMemoryEngine.saveAnswer('Do you require visa sponsorship now or in the future?', p.requiresSponsorship ? 'Yes' : 'No', 1.0, userId);
+    QAMemoryEngine.saveAnswer('Are you legally authorized to work in the United States?', p.authorizedToWork ? 'Yes' : 'No', 1.0, userId);
+    QAMemoryEngine.saveAnswer('What is your LinkedIn profile URL?', linkedinUrl, 1.0, userId);
+    QAMemoryEngine.saveAnswer('What are your top core technical skills?', skillsList, 1.0, userId);
+    QAMemoryEngine.saveAnswer('Please provide a brief summary of your background.', summaryText, 1.0, userId);
 
-    console.log(`[ResumeParserEngine] Seeded Q&A Memory Bank for candidate: ${fullName} (${email}, ${phone}).`);
+    console.log(`[ResumeParserEngine] Seeded Q&A Memory Bank for user #${userId}: ${fullName} (${email}, ${phone}).`);
   }
 
-  public static getActiveProfile(): ParsedCandidateProfile | null {
-    const row = db.prepare('SELECT * FROM candidate_profile WHERE id = 1').get() as any;
+  public static getActiveProfile(userId: number = 1): ParsedCandidateProfile | null {
+    const row = db.prepare('SELECT * FROM candidate_profile WHERE user_id = ?').get(userId) as any;
     if (!row) return null;
     return {
       fullName: row.full_name,

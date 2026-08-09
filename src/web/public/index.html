@@ -92,14 +92,17 @@
     .discovery-bar {
       background: var(--bg-card); border: 1px solid var(--border-color);
       border-radius: 16px; padding: 1.25rem; backdrop-filter: blur(10px);
-      display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 1rem;
+      display: flex; flex-direction: column; gap: 1rem;
     }
 
-    .platform-btns { display: flex; gap: 0.5rem; flex-wrap: wrap; }
-    .custom-url-group { display: flex; gap: 0.5rem; flex: 1; max-width: 550px; }
+    .platform-checkboxes { display: flex; gap: 1.5rem; align-items: center; flex-wrap: wrap; }
+    .checkbox-label { display: flex; align-items: center; gap: 0.4rem; font-size: 0.85rem; font-weight: 700; cursor: pointer; }
+    .checkbox-label input { accent-color: var(--accent-blue); width: 16px; height: 16px; cursor: pointer; }
+
+    .search-inputs-group { display: flex; gap: 0.75rem; flex-wrap: wrap; }
 
     .input-text {
-      width: 100%; padding: 0.55rem 1rem; border-radius: 9999px;
+      padding: 0.55rem 1rem; border-radius: 9999px;
       background: rgba(255,255,255,0.05); border: 1px solid var(--border-color);
       color: white; font-family: inherit; font-size: 0.875rem; outline: none;
     }
@@ -223,7 +226,7 @@
     </div>
     <div class="controls-group">
       <button class="action-pill" id="userAuthBtn" onclick="handleAuthClick()" style="border-color: #ec4899; color: #ec4899;">
-        👤 sourabh.rustagi@hotmail.com (Logout)
+        🔑 Log In / Register
       </button>
 
       <button class="action-pill" onclick="openProfileModal()" style="border-color: #a78bfa; color: #a78bfa;">
@@ -277,19 +280,30 @@
       </div>
     </div>
 
-    <!-- Job Discovery Toolbar -->
+    <!-- User-Initiated Job Discovery Toolbar -->
     <div class="discovery-bar">
-      <div class="platform-btns">
-        <button class="action-pill" onclick="refreshPlatform('linkedin')">💼 LinkedIn Jobs</button>
-        <button class="action-pill" onclick="refreshPlatform('indeed')">🎯 Indeed.com</button>
-        <button class="action-pill" onclick="refreshPlatform('naukri')">🇮🇳 Naukri.com</button>
-        <button class="action-pill" onclick="refreshPlatform('all')" style="background: rgba(59, 130, 246, 0.15); border-color: #60a5fa;">🔄 Refresh All</button>
+      <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
+        <div style="font-weight: 800; font-size: 0.95rem; display: flex; align-items: center; gap: 0.5rem;">
+          <span>🔍</span> Initiate Job Discovery Search
+        </div>
+        <div class="platform-checkboxes">
+          <label class="checkbox-label">
+            <input type="checkbox" id="chkLinkedIn" checked /> 💼 LinkedIn
+          </label>
+          <label class="checkbox-label">
+            <input type="checkbox" id="chkIndeed" checked /> 🎯 Indeed
+          </label>
+          <label class="checkbox-label">
+            <input type="checkbox" id="chkNaukri" /> 🇮🇳 Naukri
+          </label>
+        </div>
       </div>
 
-      <div class="custom-url-group">
-        <input type="url" id="customCareerUrlInput" class="input-text" placeholder="https://stripe.com/jobs or company career portal..." />
-        <button class="action-pill" onclick="crawlCustomCareerUrl()" style="background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple)); border-color: transparent; white-space: nowrap;">
-          🌐 Crawl & Match Roles
+      <div class="search-inputs-group">
+        <input type="text" id="searchKeywordsInput" class="input-text" style="width: 220px;" value="DevOps Engineer" placeholder="Role title or keywords..." />
+        <input type="url" id="customCareerUrlInput" class="input-text" style="flex: 1;" placeholder="Optional: Custom career portal URL (e.g., https://stripe.com/jobs)..." />
+        <button class="action-pill" onclick="initiateJobSearch()" style="background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple)); border-color: transparent; white-space: nowrap; font-weight: 700;">
+          🚀 Initiate Search & Fetch Jobs
         </button>
       </div>
     </div>
@@ -328,21 +342,17 @@
         <div class="swipe-card" id="swipeCard">
           <div>
             <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
-              <div class="job-badge" id="cardSalary">$180k - $240k</div>
-              <a id="cardApplyLink" href="#" target="_blank" rel="noopener noreferrer" class="action-pill" style="display: inline-flex; align-items: center; gap: 0.4rem; text-decoration: none; border-color: #60a5fa; color: #60a5fa; font-size: 0.75rem; padding: 0.25rem 0.75rem;">
+              <div class="job-badge" id="cardSalary">Queue Empty</div>
+              <a id="cardApplyLink" href="#" target="_blank" rel="noopener noreferrer" class="action-pill" style="display: none; align-items: center; gap: 0.4rem; text-decoration: none; border-color: #60a5fa; color: #60a5fa; font-size: 0.75rem; padding: 0.25rem 0.75rem;">
                 🔗 Apply Manually ↗
               </a>
             </div>
-            <div class="job-title" id="cardTitle">Senior AI Engineer</div>
-            <div class="job-company" id="cardCompany">Google • Mountain View, CA</div>
-            <div class="job-details" id="cardTags">
-              <span class="tag">AI</span>
-              <span class="tag">Python</span>
-              <span class="tag">LLM Agents</span>
-            </div>
+            <div class="job-title" id="cardTitle">No Active Jobs in Queue</div>
+            <div class="job-company" id="cardCompany">Select platforms & click Initiate Search above.</div>
+            <div class="job-details" id="cardTags"></div>
           </div>
-          <div style="font-size: 0.85rem; color: var(--text-muted); line-height: 1.5;">
-            FastApply AI will automatically fill forms using candidate profile parsed from your resume source, bypass repeat questions using Q&A memory, and submit your application. Or click Apply Manually above to open the target URL directly.
+          <div style="font-size: 0.85rem; color: var(--text-muted); line-height: 1.5;" id="cardSubtext">
+            Upload your PDF resume & portfolio link, select target job platforms, and click 'Initiate Search' to discover real jobs for your profile!
           </div>
         </div>
 
@@ -386,7 +396,7 @@
             <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--border-color); border-radius: 12px; padding: 1rem; display: flex; flex-direction: column; gap: 0.5rem;">
               <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">Active Target Job</div>
               <div style="font-weight: 800; font-size: 1.1rem;" id="flowJobTitle">No job currently in process</div>
-              <div style="font-size: 0.85rem; color: var(--accent-blue);" id="flowJobCompany">Select a job from feed or click Apply</div>
+              <div style="font-size: 0.85rem; color: var(--accent-blue);" id="flowJobCompany">Initiate a job search above to queue jobs</div>
             </div>
 
             <div style="display: flex; justify-content: space-between; font-size: 0.8rem; color: var(--text-muted);">
@@ -398,7 +408,7 @@
 
           <!-- Audit Logs View -->
           <div class="terminal-window" id="auditWindow" style="display: none; color: #60a5fa;">
-            <div>[Security] Multi-tenant audit trail initialized for user #1 (sourabh.rustagi@hotmail.com).</div>
+            <div>[Security] Multi-tenant audit trail initialized.</div>
           </div>
         </div>
 
@@ -437,7 +447,6 @@
         Upload your PDF resume document and optionally add your personal portfolio link (`https://iamsourabh.in/`). FastApply AI will synthesize both into candidate profile memory.
       </p>
 
-      <!-- PDF Dropzone -->
       <div class="dropzone" id="pdfDropzone" onclick="document.getElementById('pdfFileInput').click()">
         <div style="font-size: 2rem; margin-bottom: 0.5rem;">📥</div>
         <div style="font-weight: 700; font-size: 0.95rem;">Drag & drop your PDF Resume here, or click to browse</div>
@@ -507,17 +516,19 @@
           💾 Save Candidate Profile
         </button>
       </div>
+    </div>
+  </div>
+
   <!-- Login & Registration Modal -->
   <div class="modal-backdrop" id="authModal">
     <div class="modal-box" style="max-width: 450px;">
-      <h2 style="font-weight: 800; font-size: 1.25rem; text-align: center; margin-bottom: 0.5rem;">🔑 SaaS Account Authentication</h2>
+      <h2 style="font-weight: 800; font-size: 1.25rem; text-align: center; margin-bottom: 0.5rem;">🔑 FastApply SaaS Account Authentication</h2>
       
       <div style="display: flex; gap: 0.5rem; justify-content: center; margin-bottom: 0.5rem;">
         <button class="pill-btn active" id="tabLoginBtn" onclick="switchAuthTab('login')">🔑 Log In</button>
         <button class="pill-btn" id="tabRegisterBtn" onclick="switchAuthTab('register')">📝 Register</button>
       </div>
 
-      <!-- Login Form -->
       <div id="loginFormSection" style="display: flex; flex-direction: column; gap: 1rem;">
         <div>
           <label style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted);">Email Address:</label>
@@ -532,7 +543,6 @@
         </button>
       </div>
 
-      <!-- Register Form -->
       <div id="registerFormSection" style="display: none; flex-direction: column; gap: 1rem;">
         <div>
           <label style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted);">Full Name:</label>
@@ -786,6 +796,7 @@
       try {
         const res = await fetch('/api/resume/synthesize', {
           method: 'POST',
+          headers: currentUserToken ? { 'Authorization': `Bearer ${currentUserToken}` } : {},
           body: formData,
         });
         const data = await res.json();
@@ -809,9 +820,33 @@
       }
     }
 
+    async function initiateJobSearch() {
+      const keywords = document.getElementById('searchKeywordsInput').value.trim();
+      const customUrl = document.getElementById('customCareerUrlInput').value.trim();
+      const platforms = [];
+      if (document.getElementById('chkLinkedIn').checked) platforms.push('linkedin');
+      if (document.getElementById('chkIndeed').checked) platforms.push('indeed');
+      if (document.getElementById('chkNaukri').checked) platforms.push('naukri');
+
+      try {
+        const res = await fetch('/api/jobs/search', {
+          method: 'POST',
+          headers: getAuthHeaders(),
+          body: JSON.stringify({ platforms, customCareerUrl: customUrl, query: keywords }),
+        });
+        const data = await res.json();
+        if (data.jobs) {
+          currentJobsFeed = data.jobs;
+          currentJobIndex = 0;
+          renderCard();
+          refreshAll();
+        }
+      } catch (err) {}
+    }
+
     async function loadProfileIntoEditor() {
       try {
-        const res = await fetch('/api/stats');
+        const res = await fetch('/api/stats', { headers: getAuthHeaders() });
         const data = await res.json();
         if (data.candidate) {
           const c = data.candidate;
@@ -840,7 +875,7 @@
       try {
         const res = await fetch('/api/candidate/update', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: getAuthHeaders(),
           body: JSON.stringify(payload),
         });
         const data = await res.json();
@@ -853,7 +888,7 @@
 
     async function fetchMemories() {
       try {
-        const res = await fetch('/api/memory/qa');
+        const res = await fetch('/api/memory/qa', { headers: getAuthHeaders() });
         const data = await res.json();
         cachedMemories = data.memories || [];
         renderMemories(cachedMemories);
@@ -897,7 +932,7 @@
       const newAnswer = document.getElementById(`mem_input_${id}`).value;
       await fetch('/api/memory/qa/update', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         body: JSON.stringify({ id, answer: newAnswer }),
       });
       fetchMemories();
@@ -905,14 +940,14 @@
     }
 
     async function deleteMemoryItem(id) {
-      await fetch(`/api/memory/qa/${id}`, { method: 'DELETE' });
+      await fetch(`/api/memory/qa/${id}`, { method: 'DELETE', headers: getAuthHeaders() });
       fetchMemories();
       fetchStats();
     }
 
     async function clearAllMemories() {
       if (!confirm('Are you sure you want to clear all cached Q&A memories?')) return;
-      await fetch('/api/memory/qa/clear', { method: 'POST' });
+      await fetch('/api/memory/qa/clear', { method: 'POST', headers: getAuthHeaders() });
       fetchMemories();
       fetchStats();
     }
@@ -933,7 +968,7 @@
 
     async function fetchAuditLogs() {
       try {
-        const res = await fetch('/api/audit-logs');
+        const res = await fetch('/api/audit-logs', { headers: getAuthHeaders() });
         const data = await res.json();
         const win = document.getElementById('auditWindow');
         if (!data.logs || data.logs.length === 0) {
@@ -949,7 +984,7 @@
 
     async function fetchAgentStatus() {
       try {
-        const res = await fetch('/api/agent/status');
+        const res = await fetch('/api/agent/status', { headers: getAuthHeaders() });
         const state = await res.json();
 
         // Update Stepper Pipeline
@@ -972,46 +1007,9 @@
       } catch (err) {}
     }
 
-    async function refreshPlatform(platform) {
-      try {
-        const res = await fetch('/api/jobs/refresh-platform', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ platform }),
-        });
-        const data = await res.json();
-        if (data.jobs) {
-          currentJobsFeed = data.jobs;
-          currentJobIndex = 0;
-          renderCard();
-          refreshAll();
-        }
-      } catch (err) {}
-    }
-
-    async function crawlCustomCareerUrl() {
-      const careerUrl = document.getElementById('customCareerUrlInput').value.trim();
-      if (!careerUrl) return;
-
-      try {
-        const res = await fetch('/api/jobs/crawl-custom-url', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ careerUrl }),
-        });
-        const data = await res.json();
-        if (data.jobs) {
-          currentJobsFeed = data.jobs;
-          currentJobIndex = 0;
-          renderCard();
-          refreshAll();
-        }
-      } catch (err) {}
-    }
-
     async function fetchStats() {
       try {
-        const res = await fetch('/api/stats');
+        const res = await fetch('/api/stats', { headers: getAuthHeaders() });
         const data = await res.json();
         
         document.getElementById('dailyStat').innerText = `${data.dailyApplied} / ${data.maxDaily}`;
@@ -1032,7 +1030,7 @@
 
     async function fetchJobsFeed() {
       try {
-        const res = await fetch('/api/swipe/feed');
+        const res = await fetch('/api/swipe/feed', { headers: getAuthHeaders() });
         const data = await res.json();
         currentJobsFeed = data.jobs || [];
         renderCard();
@@ -1042,8 +1040,8 @@
     function renderCard() {
       const applyLink = document.getElementById('cardApplyLink');
       if (currentJobIndex >= currentJobsFeed.length) {
-        document.getElementById('cardTitle').innerText = 'All Jobs Processed!';
-        document.getElementById('cardCompany').innerText = 'Check back later or refresh feeds.';
+        document.getElementById('cardTitle').innerText = 'No Active Jobs in Queue';
+        document.getElementById('cardCompany').innerText = 'Select platforms & click Initiate Search above.';
         document.getElementById('cardSalary').innerText = 'Queue Empty';
         document.getElementById('cardTags').innerHTML = '';
         if (applyLink) applyLink.style.display = 'none';
@@ -1052,15 +1050,16 @@
 
       const job = currentJobsFeed[currentJobIndex];
       document.getElementById('cardTitle').innerText = job.title;
-      document.getElementById('cardCompany').innerText = `${job.company} • ${job.location}`;
+      document.getElementById('cardCompany').innerText = `${job.company} • ${job.location || 'Remote'}`;
       document.getElementById('cardSalary').innerText = job.salary || '$160k - $240k';
-      document.getElementById('cardTags').innerHTML = (job.tags || []).map(t => `<span class="tag">${t}</span>`).join('');
+      document.getElementById('cardTags').innerHTML = (job.tags || ['DevOps', 'Cloud']).map(t => `<span class="tag">${t}</span>`).join('');
 
       if (applyLink) {
-        if (job.url) {
-          applyLink.href = job.url;
+        const targetUrl = job.url || job.job_url;
+        if (targetUrl) {
+          applyLink.href = targetUrl;
           applyLink.style.display = 'inline-flex';
-          applyLink.setAttribute('title', `Open direct application page: ${job.url}`);
+          applyLink.setAttribute('title', `Open direct application page: ${targetUrl}`);
         } else {
           applyLink.style.display = 'none';
         }
@@ -1072,7 +1071,7 @@
       const job = currentJobsFeed[currentJobIndex];
       await fetch('/api/swipe/right', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         body: JSON.stringify({ job }),
       });
       currentJobIndex++;
@@ -1085,7 +1084,7 @@
       const job = currentJobsFeed[currentJobIndex];
       await fetch('/api/swipe/left', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         body: JSON.stringify({ job }),
       });
       currentJobIndex++;
@@ -1097,7 +1096,7 @@
       const provider = document.getElementById('providerSelect').value;
       await fetch('/api/config', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         body: JSON.stringify({ provider }),
       });
       refreshAll();
@@ -1109,7 +1108,7 @@
 
       await fetch('/api/config', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         body: JSON.stringify({ mode }),
       });
       refreshAll();
@@ -1117,7 +1116,7 @@
 
     async function fetchLogs() {
       try {
-        const res = await fetch('/api/logs');
+        const res = await fetch('/api/logs', { headers: getAuthHeaders() });
         const data = await res.json();
         const win = document.getElementById('terminalWindow');
 
@@ -1139,7 +1138,7 @@
 
     async function fetchHistory() {
       try {
-        const res = await fetch('/api/history');
+        const res = await fetch('/api/history', { headers: getAuthHeaders() });
         const data = await res.json();
         const tbody = document.getElementById('historyTableBody');
 
@@ -1152,7 +1151,7 @@
           <tr>
             <td><strong>${j.company}</strong></td>
             <td>${j.title}</td>
-            <td><span class="status-badge" style="background: rgba(255,255,255,0.05); color: #9ca3af;">${j.apply_mode}</span></td>
+            <td><span class="status-badge" style="background: rgba(255,255,255,0.05); color: #9ca3af;">${j.apply_mode || 'autonomous'}</span></td>
             <td><span class="status-badge status-${j.status}">${j.status}</span></td>
             <td style="color: var(--text-muted); font-size: 0.8rem;">${new Date(j.applied_at).toLocaleTimeString()}</td>
           </tr>
@@ -1162,15 +1161,11 @@
 
     function refreshAll() {
       fetchStats();
+      fetchJobsFeed();
       fetchLogs();
       fetchHistory();
       fetchAgentStatus();
     }
-
-    setInterval(fetchLogs, 1000);
-    setInterval(fetchAgentStatus, 1000);
-    setInterval(fetchStats, 3000);
-    setInterval(fetchHistory, 3000);
 
     async function checkAuthOnLoad() {
       if (currentUserToken) {
@@ -1189,11 +1184,12 @@
       }
     }
 
-    fetchStats();
-    fetchJobsFeed();
-    fetchLogs();
-    fetchHistory();
-    fetchAgentStatus();
+    setInterval(fetchLogs, 1000);
+    setInterval(fetchAgentStatus, 1000);
+    setInterval(fetchStats, 3000);
+    setInterval(fetchHistory, 3000);
+
+    refreshAll();
     checkAuthOnLoad();
   </script>
 </body>

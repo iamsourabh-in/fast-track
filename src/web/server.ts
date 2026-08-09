@@ -244,60 +244,80 @@ export function startDashboardServer(port: number = config.port) {
     res.json({ success: true, provider: config.provider, mode: config.mode });
   });
 
-  // 3. Get Swipe Jobs Feed
-  app.get('/api/swipe/feed', async (req, res) => {
-    if (activeCrawledJobs.length === 0) {
-      addLog(`🌐 Initializing live job feed: Scraping real LinkedIn DevOps job postings...`);
-      const realJobs = await RealJobScraper.scrapeLinkedInJobs('DevOps', 'Remote');
-      activeCrawledJobs.push(...realJobs);
-    }
-    res.json({ jobs: activeCrawledJobs });
+  // 3. Get Swipe Jobs Feed (User-Specific from SQLite)
+  app.get('/api/swipe/feed', AuthService.authenticateToken, (req: AuthenticatedRequest, res) => {
+    const userId = req.user?.id || 1;
+    const queued = JobTrackerEngine.getUserQueuedJobs(userId);
+    res.json({ jobs: queued });
   });
 
-  // 3b. Refresh Platform Jobs (LinkedIn, Indeed, Naukri)
-  app.post('/api/jobs/refresh-platform', async (req, res) => {
-    const { platform, query } = req.body;
-    const targetPlatform = (platform || 'linkedin').toLowerCase();
+  // 3b. User-Initiated Job Search (Platforms + Custom URL)
+  app.post('/api/jobs/search', AuthService.authenticateToken, async (req: AuthenticatedRequest, res) => {
+    const userId = req.user?.id || 1;
+    const { platforms, customCareerUrl, query } = req.body;
     const searchKeywords = query || 'DevOps Engineer';
+    const selectedPlatforms = Array.isArray(platforms) ? platforms : ['linkedin'];
 
     try {
-      addLog(`🔍 Launching Playwright live scraper for [${targetPlatform.toUpperCase()}] ("${searchKeywords}")...`);
+      addLog(`🔍 User #${userId} initiated Job Discovery Search for "${searchKeywords}"...`);
+      let allFound: RealJobPosting[] = [];
 
-      let newJobs: RealJobPosting[] = [];
-      if (targetPlatform === 'linkedin' || targetPlatform === 'all') {
-        newJobs = await RealJobScraper.scrapeLinkedInJobs(searchKeywords, 'Remote');
-      } else if (targetPlatform === 'indeed') {
-        newJobs = await RealJobScraper.scrapeIndeedJobs(searchKeywords, 'Remote');
-      } else {
-        newJobs = await RealJobScraper.scrapeLinkedInJobs(searchKeywords, 'Remote');
+      for (const p of selectedPlatforms) {
+        if (p === 'linkedin') {
+          const lj = await RealJobScraper.scrapeLinkedInJobs(searchKeywords, 'Remote');
+          allFound.push(...lj);
+        } else if (p === 'indeed') {
+          const ij = await RealJobScraper.scrapeIndeedJobs(searchKeywords, 'Remote');
+          allFound.push(...ij);
+        }
       }
 
-      const existingUrls = new Set(activeCrawledJobs.map(j => j.url));
-      const uniqueNew = newJobs.filter(j => !existingUrls.has(j.url));
+      if (customCareerUrl) {
+        addLog(`🌐 Crawling custom career page URL: ${customCareerUrl}...`);
+        const cj = await RealJobScraper.crawlCustomCareerUrl(customCareerUrl);
+        allFound.push(...cj);
+      }
 
-      activeCrawledJobs.unshift(...uniqueNew);
-      addLog(`✅ Playwright live scrape completed! Added ${uniqueNew.length} unique active job listings to Swipe Deck.`);
-      res.json({ success: true, count: uniqueNew.length, jobs: activeCrawledJobs });
+      const savedCount = JobTrackerEngine.saveUserJobs(allFound, userId);
+      AuditLogger.log(userId, 'JOB_SEARCH', `Discovered ${allFound.length} jobs (${savedCount} new saved to user queue)`);
+      addLog(`✅ Job search completed! Saved ${savedCount} new jobs to User #${userId} queue.`);
+
+      const queued = JobTrackerEngine.getUserQueuedJobs(userId);
+      res.json({ success: true, count: savedCount, jobs: queued });
     } catch (err: any) {
-      addLog(`❌ Live scraping error: ${err.message}`);
+      addLog(`❌ Job search error: ${err.message}`);
       res.status(500).json({ error: err.message });
     }
   });
 
-  // 3c. Crawl Custom Career URL
-  app.post('/api/jobs/crawl-custom-url', async (req, res) => {
+  // 3c. Legacy platform refresh (delegates to user job search)
+  app.post('/api/jobs/refresh-platform', AuthService.authenticateToken, async (req: AuthenticatedRequest, res) => {
+    const userId = req.user?.id || 1;
+    const { platform, query } = req.body;
+    const targetPlatform = (platform || 'linkedin').toLowerCase();
+
+    try {
+      const found = await RealJobScraper.scrapeLinkedInJobs(query || 'DevOps', 'Remote');
+      const savedCount = JobTrackerEngine.saveUserJobs(found, userId);
+      const queued = JobTrackerEngine.getUserQueuedJobs(userId);
+      res.json({ success: true, count: savedCount, jobs: queued });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // 3d. Crawl Custom Career URL
+  app.post('/api/jobs/crawl-custom-url', AuthService.authenticateToken, async (req: AuthenticatedRequest, res) => {
+    const userId = req.user?.id || 1;
     const { careerUrl } = req.body;
     if (!careerUrl) return res.status(400).json({ error: 'careerUrl is required' });
 
     try {
       addLog(`🌐 Playwright navigating to custom career portal => ${careerUrl}`);
       const matchedJobs = await RealJobScraper.crawlCustomCareerUrl(careerUrl);
-      const existingUrls = new Set(activeCrawledJobs.map(j => j.url));
-      const uniqueMatched = matchedJobs.filter(j => !existingUrls.has(j.url));
-
-      activeCrawledJobs.unshift(...uniqueMatched);
-      addLog(`✅ Playwright extracted ${uniqueMatched.length} unique application URLs from ${careerUrl}`);
-      res.json({ success: true, count: uniqueMatched.length, jobs: activeCrawledJobs });
+      const savedCount = JobTrackerEngine.saveUserJobs(matchedJobs, userId);
+      const queued = JobTrackerEngine.getUserQueuedJobs(userId);
+      res.json({ success: true, count: savedCount, jobs: queued });
     } catch (err: any) {
       addLog(`❌ Custom career URL crawl failed: ${err.message}`);
       res.status(500).json({ error: err.message });
@@ -305,23 +325,8 @@ export function startDashboardServer(port: number = config.port) {
   });
 
   // 4. Swipe Right (Apply)
-  app.post('/api/swipe/right', (req, res) => {
-    const { job } = req.body;
-    if (!job) return res.status(400).json({ error: 'Job payload missing' });
-
-    SwipeModeHandler.addJobToSwipeQueue({
-      company: job.company,
-      title: job.title,
-      location: job.location,
-      url: job.url,
-    });
-
-    addLog(`👉 SWIPE RIGHT (Applied): ${job.title} at ${job.company}`);
-    res.json({ success: true, status: 'queued' });
-  });
-
-  // 5. Swipe Left (Skip)
-  app.post('/api/swipe/left', (req, res) => {
+  app.post('/api/swipe/right', AuthService.authenticateToken, (req: AuthenticatedRequest, res) => {
+    const userId = req.user?.id || 1;
     const { job } = req.body;
     if (!job) return res.status(400).json({ error: 'Job payload missing' });
 
@@ -329,20 +334,48 @@ export function startDashboardServer(port: number = config.port) {
       company: job.company,
       title: job.title,
       location: job.location,
-      jobUrl: job.url,
-      applyMode: 'swipe',
-      status: 'skipped',
-      notes: 'Skipped by user in Swipe UI',
+      jobUrl: job.url || job.job_url,
+      applyMode: config.mode,
+      status: 'applied',
+    }, userId);
+
+    SwipeModeHandler.addJobToSwipeQueue({
+      company: job.company,
+      title: job.title,
+      location: job.location,
+      url: job.url || job.job_url,
     });
 
+    AuditLogger.log(userId, 'APPLY_JOB', `Applied to ${job.title} at ${job.company}`);
+    addLog(`👉 SWIPE RIGHT (Applied): ${job.title} at ${job.company}`);
+    res.json({ success: true, status: 'queued' });
+  });
+
+  // 5. Swipe Left (Skip)
+  app.post('/api/swipe/left', AuthService.authenticateToken, (req: AuthenticatedRequest, res) => {
+    const userId = req.user?.id || 1;
+    const { job } = req.body;
+    if (!job) return res.status(400).json({ error: 'Job payload missing' });
+
+    JobTrackerEngine.recordJob({
+      company: job.company,
+      title: job.title,
+      location: job.location,
+      jobUrl: job.url || job.job_url,
+      applyMode: config.mode,
+      status: 'skipped',
+    }, userId);
+
+    AuditLogger.log(userId, 'SKIP_JOB', `Skipped ${job.title} at ${job.company}`);
     addLog(`👈 SWIPE LEFT (Skipped): ${job.title} at ${job.company}`);
     res.json({ success: true, status: 'skipped' });
   });
 
-  // 6. Get Applied History
-  app.get('/api/history', (req, res) => {
-    const jobs = JobTrackerEngine.getAllJobs(50);
-    res.json({ jobs });
+  // 6. Application History Endpoint
+  app.get('/api/history', AuthService.authenticateToken, (req: AuthenticatedRequest, res) => {
+    const userId = req.user?.id || 1;
+    const history = JobTrackerEngine.getRecentHistory(userId);
+    res.json({ jobs: history });
   });
 
   // 7. Get Live Agent Logs

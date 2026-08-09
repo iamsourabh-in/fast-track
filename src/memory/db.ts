@@ -63,6 +63,21 @@ export function initDatabase() {
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
 
+    CREATE TABLE IF NOT EXISTS user_jobs (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      job_key TEXT NOT NULL,
+      company TEXT NOT NULL,
+      title TEXT NOT NULL,
+      location TEXT,
+      job_url TEXT NOT NULL,
+      source TEXT NOT NULL,
+      salary TEXT,
+      status TEXT DEFAULT 'queued',
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(user_id, job_key)
+    );
+
     CREATE TABLE IF NOT EXISTS applied_jobs (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       user_id INTEGER DEFAULT 1,
@@ -77,6 +92,11 @@ export function initDatabase() {
       applied_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
   `);
+
+  // Column migration guards for existing DB files
+  try { db.exec('ALTER TABLE candidate_profile ADD COLUMN user_id INTEGER DEFAULT 1;'); } catch {}
+  try { db.exec('ALTER TABLE qa_memory ADD COLUMN user_id INTEGER DEFAULT 1;'); } catch {}
+  try { db.exec('ALTER TABLE applied_jobs ADD COLUMN user_id INTEGER DEFAULT 1;'); } catch {}
 
   // Seed default user account if empty
   const userCount = db.prepare('SELECT COUNT(*) as count FROM users').get() as { count: number };

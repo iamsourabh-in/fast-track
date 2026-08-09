@@ -21,23 +21,22 @@ export class QAMemoryEngine {
   /**
    * Look up if a question has been answered before in memory.
    */
-  public static findAnswer(questionRaw: string): QARecord | null {
+  public static findAnswer(questionRaw: string, userId: number = 1): QARecord | null {
     const normalized = this.normalizeQuestion(questionRaw);
     
-    // 1. Direct exact match on normalized string
-    const exact = db.prepare('SELECT * FROM qa_memory WHERE question_normalized = ?').get(normalized) as QARecord | undefined;
+    // 1. Direct exact match on normalized string for user_id
+    const exact = db.prepare('SELECT * FROM qa_memory WHERE user_id = ? AND question_normalized = ?').get(userId, normalized) as QARecord | undefined;
     if (exact) {
       db.prepare('UPDATE qa_memory SET usage_count = usage_count + 1, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(exact.id);
       return exact;
     }
 
-    // 2. Fuzzy / Containment match with Category Safety
-    const all = db.prepare('SELECT * FROM qa_memory').all() as QARecord[];
+    // 2. Fuzzy / Containment match with Category Safety for user_id
+    const all = db.prepare('SELECT * FROM qa_memory WHERE user_id = ?').all(userId) as QARecord[];
     for (const record of all) {
       const isEmailPhoneQuery = normalized.includes('email') || normalized.includes('phone') || normalized.includes('mobile');
       const isEmailPhoneRecord = record.question_normalized.includes('email') || record.question_normalized.includes('phone') || record.question_normalized.includes('mobile');
 
-      // Category mismatch guard (e.g. Email/Phone query must not match Name record)
       if (isEmailPhoneQuery !== isEmailPhoneRecord) {
         continue;
       }
@@ -67,45 +66,50 @@ export class QAMemoryEngine {
   /**
    * Save a new answered question into memory cache.
    */
-  public static saveAnswer(questionRaw: string, answer: string, confidence: number = 1.0): QARecord {
+  public static saveAnswer(questionRaw: string, answer: string, confidence: number = 1.0, userId: number = 1): QARecord {
     const normalized = this.normalizeQuestion(questionRaw);
     const safeAnswer = (answer !== undefined && answer !== null ? String(answer) : '').trim() || 'N/A';
     
-    db.prepare(`
-      INSERT INTO qa_memory (question_normalized, question_raw, answer, confidence, usage_count)
-      VALUES (?, ?, ?, ?, 1)
-      ON CONFLICT(question_normalized) DO UPDATE SET
-        answer = excluded.answer,
-        confidence = excluded.confidence,
-        usage_count = qa_memory.usage_count + 1,
-        updated_at = CURRENT_TIMESTAMP
-    `).run(normalized, questionRaw, safeAnswer, confidence);
+    const existing = db.prepare('SELECT id FROM qa_memory WHERE user_id = ? AND question_normalized = ?').get(userId, normalized) as { id: number } | undefined;
 
-    return db.prepare('SELECT * FROM qa_memory WHERE question_normalized = ?').get(normalized) as QARecord;
+    if (existing) {
+      db.prepare(`
+        UPDATE qa_memory SET
+          answer = ?, confidence = ?, usage_count = usage_count + 1, updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+      `).run(safeAnswer, confidence, existing.id);
+    } else {
+      db.prepare(`
+        INSERT INTO qa_memory (user_id, question_normalized, question_raw, answer, confidence, usage_count)
+        VALUES (?, ?, ?, ?, ?, 1)
+      `).run(userId, normalized, questionRaw, safeAnswer, confidence);
+    }
+
+    return db.prepare('SELECT * FROM qa_memory WHERE user_id = ? AND question_normalized = ?').get(userId, normalized) as QARecord;
   }
 
-  public static getAllMemories(): QARecord[] {
-    return db.prepare('SELECT * FROM qa_memory ORDER BY usage_count DESC, updated_at DESC').all() as QARecord[];
+  public static getAllMemories(userId: number = 1): QARecord[] {
+    return db.prepare('SELECT * FROM qa_memory WHERE user_id = ? ORDER BY usage_count DESC, updated_at DESC').all(userId) as QARecord[];
   }
 
-  public static updateMemory(id: number, answer: string): boolean {
+  public static updateMemory(id: number, answer: string, userId: number = 1): boolean {
     const safeAnswer = (answer ?? '').trim() || 'N/A';
-    const result = db.prepare('UPDATE qa_memory SET answer = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(safeAnswer, id);
+    const result = db.prepare('UPDATE qa_memory SET answer = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND user_id = ?').run(safeAnswer, id, userId);
     return result.changes > 0;
   }
 
-  public static deleteMemory(id: number): boolean {
-    const result = db.prepare('DELETE FROM qa_memory WHERE id = ?').run(id);
+  public static deleteMemory(id: number, userId: number = 1): boolean {
+    const result = db.prepare('DELETE FROM qa_memory WHERE id = ? AND user_id = ?').run(id, userId);
     return result.changes > 0;
   }
 
-  public static clearAllMemories(): void {
-    db.prepare('DELETE FROM qa_memory').run();
-    console.log('[QAMemoryEngine] Cleared all cached memories.');
+  public static clearAllMemories(userId: number = 1): void {
+    db.prepare('DELETE FROM qa_memory WHERE user_id = ?').run(userId);
+    console.log(`[QAMemoryEngine] Cleared all cached memories for user #${userId}.`);
   }
 
-  public static getStats(): { totalAnswers: number; totalReuses: number } {
-    const row = db.prepare('SELECT COUNT(*) as total, SUM(usage_count) as reuses FROM qa_memory').get() as { total: number; reuses: number | null };
+  public static getStats(userId: number = 1): { totalAnswers: number; totalReuses: number } {
+    const row = db.prepare('SELECT COUNT(*) as total, SUM(usage_count) as reuses FROM qa_memory WHERE user_id = ?').get(userId) as { total: number; reuses: number | null };
     return {
       totalAnswers: row.total || 0,
       totalReuses: row.reuses || 0,

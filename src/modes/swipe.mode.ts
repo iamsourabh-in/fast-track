@@ -33,7 +33,7 @@ export class SwipeModeHandler {
         page = browserObj.page;
         context = browserObj.context;
 
-        const result: ApplicationResult = await AgentCore.processApplication(page, job, 'swipe');
+        const result: ApplicationResult = await AgentCore.processApplication(page, job, 'swipe', '000000000000000000000000');
         console.log(`[SwipeMode] ✅ Application finished for ${job.company}: ${result.status.toUpperCase()} (${result.fieldsFilledCount} fields filled)`);
       } catch (err: any) {
         console.error(`[SwipeMode] ❌ Background application execution failed for ${job.company}: ${err.message}`);

@@ -12,6 +12,7 @@ export class CopilotModeHandler {
         page,
         job,
         'copilot',
+        '000000000000000000000000',
         async (targetJob: ApplicationJobTarget, fields: FormFieldDescriptor[]) => {
           console.log(`[CopilotMode] 🤝 Pre-filled ${fields.length} form inputs for ${targetJob.company}. Auto-confirming submit for user.`);
           return true;

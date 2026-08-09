@@ -11,6 +11,8 @@ import { User, AuditLog, CandidateProfile, QAMemory, UserJob, AppliedJob } from 
 import { ResumeParserEngine } from '../memory/resume-parser.js';
 import { RealJobScraper, RealJobPosting } from '../browser/real-job-scraper.js';
 import { AgentStateTracker } from '../agent/agent-state.js';
+import { AgentCore } from '../agent/agent.core.js';
+import { BrowserFactory } from '../browser/browser.factory.js';
 import { AuthService, AuthenticatedRequest } from '../auth/auth.service.js';
 import { AuditLogger } from '../memory/audit-logger.js';
 
@@ -300,18 +302,30 @@ export function startDashboardServer(port: number = config.port) {
     const { job } = req.body;
     if (!job) return res.status(400).json({ error: 'Job payload missing' });
 
-    await JobTrackerEngine.recordJob({
-      company: job.company,
-      title: job.title,
-      location: job.location,
-      jobUrl: job.url || job.job_url,
-      applyMode: config.mode,
-      status: 'applied',
-    }, userId);
-
-    await AuditLogger.log(userId, 'APPLY_JOB', `Applied to ${job.title} at ${job.company}`);
-    addLog(`👉 SWIPE RIGHT (Applied): ${job.title} at ${job.company}`);
+    // Respond immediately so UI can swipe animation doesn't hang
     res.json({ success: true, status: 'queued' });
+
+    // Run Agent in background
+    setTimeout(async () => {
+      try {
+        await AuditLogger.log(userId, 'APPLY_JOB_START', `Agent initiating application to ${job.title} at ${job.company}`);
+        addLog(`👉 SWIPE RIGHT (Initiated): ${job.title} at ${job.company}`);
+        
+        const { page, context } = await BrowserFactory.createPage();
+        
+        await AgentCore.processApplication(page, {
+          company: job.company,
+          title: job.title,
+          location: job.location,
+          url: job.url || job.job_url,
+        }, config.mode, userId);
+
+        await BrowserFactory.closeAll();
+      } catch (err: any) {
+        addLog(`❌ Agent execution error: ${err.message}`);
+        await AuditLogger.log(userId, 'AGENT_ERROR', err.message);
+      }
+    }, 100);
   });
 
   app.post('/api/swipe/left', AuthService.authenticateToken, async (req: AuthenticatedRequest, res) => {

@@ -15,7 +15,7 @@ export class AutonomousModeHandler {
         break;
       }
 
-      const res = await AgentCore.processApplication(page, job, 'autonomous');
+      const res = await AgentCore.processApplication(page, job, 'autonomous', '000000000000000000000000');
       results.push(res);
     }
 

@@ -10,7 +10,7 @@ export class StealthModeHandler {
     for (const job of jobs) {
       // Extended random human break between applications (2 to 5 seconds for simulation)
       await StealthUtils.randomDelay(2000, 5000);
-      const res = await AgentCore.processApplication(page, job, 'stealth');
+      const res = await AgentCore.processApplication(page, job, 'stealth', '000000000000000000000000');
       results.push(res);
     }
 

@@ -34,6 +34,7 @@ export class AgentCore {
     page: Page,
     job: ApplicationJobTarget,
     mode: ApplyModeType,
+    userId: string,
     onUserReviewNeeded?: (job: ApplicationJobTarget, fields: FormFieldDescriptor[]) => Promise<boolean>
   ): Promise<ApplicationResult> {
     const startTime = Date.now();
@@ -56,7 +57,7 @@ export class AgentCore {
     });
 
     // 1. Deduplication check
-    if (await JobTrackerEngine.isAlreadyProcessed(job.company, job.title, job.url, '000000000000000000000000')) {
+    if (await JobTrackerEngine.isAlreadyProcessed(job.company, job.title, job.url, userId)) {
       console.log(`[AgentCore] ⏩ Skipping duplicate job: ${job.company} - ${job.title}`);
       AgentStateTracker.updateState({ status: 'completed', activeStep: 5, stepName: 'Completed (Skipped Duplicate)', progressPercent: 100 });
       const record = await JobTrackerEngine.recordJob({
@@ -67,7 +68,7 @@ export class AgentCore {
         applyMode: mode,
         status: 'skipped',
         notes: 'Duplicate detected by JobTrackerEngine',
-      }, '000000000000000000000000');
+      }, userId);
       return {
         job,
         status: 'skipped',
@@ -122,7 +123,7 @@ export class AgentCore {
         }
 
         // Memory cache lookup
-        const cachedQA = await QAMemoryEngine.findAnswer(field.label, '000000000000000000000000');
+        const cachedQA = await QAMemoryEngine.findAnswer(field.label, userId);
         let answerText = '';
 
         if (cachedQA) {
@@ -136,7 +137,7 @@ export class AgentCore {
           answerText = await activeLLM.generateAnswer(prompt, { systemPrompt: SYSTEM_PROMPT_JOB_QA });
           
           // Save to QA Memory Engine
-          await QAMemoryEngine.saveAnswer(field.label, answerText, 0.95, '000000000000000000000000');
+          await QAMemoryEngine.saveAnswer(field.label, answerText, 0.95, userId);
           console.log(`[AgentCore] 🤖 LLM Answer Generated (${activeLLM.name}): "${field.label}" => "${answerText}"`);
         }
 
@@ -159,6 +160,13 @@ export class AgentCore {
         }
       }
 
+      AgentStateTracker.updateState({
+        status: 'submitting',
+        activeStep: 4,
+        stepName: '4. Stealth Auto Fill & Validation',
+        progressPercent: 85,
+      });
+
       // 5. Handle Operating Mode specific action
       let finalStatus: 'applied' | 'skipped' = 'applied';
 
@@ -169,6 +177,13 @@ export class AgentCore {
           finalStatus = 'skipped';
         }
       }
+
+      AgentStateTracker.updateState({
+        status: 'completed',
+        activeStep: 5,
+        stepName: '5. Submit & Verify',
+        progressPercent: 100,
+      });
 
       if (finalStatus === 'applied') {
         const submitSelector = await FormParser.findSubmitButtonSelector(page);
@@ -188,7 +203,7 @@ export class AgentCore {
         applyMode: mode,
         status: finalStatus,
         notes: `Successfully completed with ${fieldsFilledCount} fields filled (${memoryHitsCount} cache hits, ${llmCallsCount} LLM calls)`,
-      }, '000000000000000000000000');
+      }, userId);
 
       return {
         job,
@@ -209,7 +224,9 @@ export class AgentCore {
         applyMode: mode,
         status: 'failed',
         notes: err.message,
-      }, '000000000000000000000000');
+      }, userId);
+
+      AgentStateTracker.updateState({ status: 'failed', stepName: 'Application Failed', progressPercent: 100 });
 
       return {
         job,

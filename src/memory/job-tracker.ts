@@ -167,7 +167,7 @@ export class JobTrackerEngine {
   }
 
   public static async getRecentHistory(userId: string, limit: number = 50): Promise<AppliedJobRecord[]> {
-    const jobs = await AppliedJob.find({ userId }).sort({ createdAt: -1 }).limit(limit).lean();
+    const jobs = await AppliedJob.find({ userId }).sort({ appliedAt: -1 }).limit(limit).lean();
     return jobs.map((j: any) => ({
       id: j._id.toString(),
       userId: j.userId.toString(),

@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
-import { CandidateFacts } from '../App';
+import { CandidateFacts, HistoryItem } from '../App';
+import { HistoryTable } from './HistoryTable';
 
 interface ProfileModalProps {
   candidate: CandidateFacts | null;
+  history: HistoryItem[];
   getHeaders: () => Record<string, string>;
   onClose: () => void;
   onSuccess: () => void;
@@ -10,6 +12,7 @@ interface ProfileModalProps {
 
 export const ProfileModal: React.FC<ProfileModalProps> = ({
   candidate,
+  history,
   getHeaders,
   onClose,
   onSuccess,
@@ -66,7 +69,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
         borderRadius: '24px',
         padding: '2rem',
         width: '90%',
-        maxWidth: '750px',
+        maxWidth: '900px',
         maxHeight: '88vh',
         overflowY: 'auto',
         display: 'flex',
@@ -145,7 +148,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
           />
         </div>
 
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1rem', paddingBottom: '2rem', borderBottom: '1px solid rgba(255, 255, 255, 0.08)' }}>
           <button onClick={onClose} style={{ background: 'transparent', border: 'none', color: '#9ca3af', cursor: 'pointer' }}>
             Cancel
           </button>
@@ -163,6 +166,10 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
           >
             💾 Save Candidate Profile
           </button>
+        </div>
+        
+        <div style={{ marginTop: '0.5rem', height: '100%' }}>
+          <HistoryTable history={history} />
         </div>
       </div>
     </div>

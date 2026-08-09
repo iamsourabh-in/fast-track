@@ -409,8 +409,6 @@ export default function App() {
                 fetchAuditLogs={fetchAuditLogs}
               />
             )}
-
-            <HistoryTable history={history} />
           </div>
         </div>
       </main>
@@ -429,6 +427,7 @@ export default function App() {
       {showProfileModal && (
         <ProfileModal
           candidate={candidate}
+          history={history}
           getHeaders={getHeaders}
           onClose={() => setShowProfileModal(false)}
           onSuccess={() => {
@@ -447,8 +446,20 @@ export default function App() {
       )}
 
       {showSearchModal && (
-        <div className="modal-backdrop animate-fade-in" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div className="modal-content animate-slide-up" style={{ width: '100%', maxWidth: '800px', padding: '2rem' }}>
+        <div className="animate-fade-in" style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          width: '100vw',
+          height: '100vh',
+          background: 'rgba(0, 0, 0, 0.85)',
+          backdropFilter: 'blur(8px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000
+        }}>
+          <div className="glass-panel animate-slide-up" style={{ width: '100%', maxWidth: '900px', padding: '2.5rem', background: 'var(--bg-surface)' }}>
             <div className="flex-between" style={{ marginBottom: '1.5rem' }}>
               <h2 style={{ fontSize: '1.5rem', fontWeight: 800 }}>Discover Jobs</h2>
               <button className="btn btn-ghost" onClick={() => setShowSearchModal(false)} style={{ padding: '0.5rem' }}>

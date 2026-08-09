@@ -36,6 +36,7 @@ export interface JobPosting {
   url?: string;
   job_url?: string;
   salary?: string;
+  description?: string;
   tags?: string[];
   status?: string;
 }

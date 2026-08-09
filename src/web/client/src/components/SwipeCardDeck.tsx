@@ -92,7 +92,26 @@ export const SwipeCardDeck: React.FC<SwipeCardDeckProps> = ({
           </div>
         </div>
 
-        <div style={{ fontSize: '0.85rem', color: '#9ca3af', lineHeight: 1.5 }}>
+        {job?.description && (
+          <div style={{
+            marginTop: '1rem',
+            fontSize: '0.85rem',
+            color: '#d1d5db',
+            lineHeight: 1.5,
+            display: '-webkit-box',
+            WebkitLineClamp: 3,
+            WebkitBoxOrient: 'vertical',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            background: 'rgba(0,0,0,0.2)',
+            padding: '1rem',
+            borderRadius: '12px'
+          }}>
+            {job.description}
+          </div>
+        )}
+
+        <div style={{ fontSize: '0.85rem', color: '#9ca3af', lineHeight: 1.5, marginTop: 'auto' }}>
           {job ? (
             `Click Apply to launch Playwright autonomous auto-filler or click 'Apply Manually' to open the direct application link in your browser.`
           ) : (

@@ -68,6 +68,7 @@ export class JobTrackerEngine {
               jobUrl: j.url,
               source: j.source || 'custom',
               salary: j.salary || '$160k - $240k',
+              description: j.descriptionSnippet || j.description || '',
               status: 'queued'
             }
           },
@@ -93,6 +94,7 @@ export class JobTrackerEngine {
       job_url: j.jobUrl,
       source: j.source,
       salary: j.salary,
+      description: j.description,
       status: j.status,
       created_at: j.createdAt ? j.createdAt.toISOString() : new Date().toISOString()
     }));

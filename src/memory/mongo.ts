@@ -70,6 +70,7 @@ const userJobSchema = new mongoose.Schema({
   jobUrl: { type: String, required: true },
   source: { type: String, required: true },
   salary: { type: String, default: '' },
+  description: { type: String, default: '' },
   status: { type: String, enum: ['queued', 'applied', 'skipped', 'failed'], default: 'queued' },
   createdAt: { type: Date, default: Date.now }
 });

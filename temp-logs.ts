@@ -1,0 +1,1 @@
+import mongoose from 'mongoose'; import { AuditLog } from './src/memory/mongo.js'; await mongoose.connect('mongodb://localhost:27017/fasttrack'); const logs = await AuditLog.find().sort({createdAt:-1}).limit(10); console.log(logs); process.exit(0);

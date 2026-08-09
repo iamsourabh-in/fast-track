@@ -100,7 +100,7 @@ export class JobTrackerEngine {
     }));
   }
 
-  public static async updateUserJobStatus(jobKeyOrUrl: string, status: 'applied' | 'skipped' | 'failed', userId: string): Promise<void> {
+  public static async updateUserJobStatus(jobKeyOrUrl: string, status: 'applied' | 'skipped' | 'failed' | 'pending', userId: string): Promise<void> {
     await UserJob.updateOne(
       { userId, $or: [{ jobKey: jobKeyOrUrl }, { jobUrl: jobKeyOrUrl }] },
       { $set: { status } }
@@ -118,21 +118,22 @@ export class JobTrackerEngine {
   }, userId: string): Promise<AppliedJobRecord> {
     const key = this.generateJobKey(job.company, job.title, job.jobUrl);
 
-    const appliedJob = new AppliedJob({
-      userId,
-      jobKey: key,
-      company: job.company,
-      title: job.title,
-      location: job.location || '',
-      jobUrl: job.jobUrl,
-      applyMode: job.applyMode,
-      status: job.status,
-      notes: job.notes || ''
-    });
-    
-    await appliedJob.save();
+    const appliedJob = await AppliedJob.findOneAndUpdate(
+      { userId, jobKey: key },
+      {
+        company: job.company,
+        title: job.title,
+        location: job.location || '',
+        jobUrl: job.jobUrl,
+        applyMode: job.applyMode,
+        status: job.status,
+        notes: job.notes || '',
+        appliedAt: new Date()
+      },
+      { upsert: true, returnDocument: 'after' }
+    );
 
-    await this.updateUserJobStatus(key, job.status === 'applied' ? 'applied' : 'skipped', userId);
+    await this.updateUserJobStatus(key, job.status, userId);
 
     return {
       id: appliedJob._id.toString(),

@@ -311,6 +311,17 @@ export function startDashboardServer(port: number = config.port) {
         await AuditLogger.log(userId, 'APPLY_JOB_START', `Agent initiating application to ${job.title} at ${job.company}`);
         addLog(`👉 SWIPE RIGHT (Initiated): ${job.title} at ${job.company}`);
         
+        // Record job as pending so it shows in history
+        await JobTrackerEngine.recordJob({
+          company: job.company,
+          title: job.title,
+          location: job.location,
+          jobUrl: job.url || job.job_url,
+          applyMode: config.mode,
+          status: 'pending',
+          notes: 'Agent is currently processing this application...',
+        }, userId);
+
         const { page, context } = await BrowserFactory.createPage();
         
         await AgentCore.processApplication(page, {

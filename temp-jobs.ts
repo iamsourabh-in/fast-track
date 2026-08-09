@@ -1,0 +1,1 @@
+import mongoose from 'mongoose'; import { AppliedJob } from './src/memory/mongo.js'; await mongoose.connect('mongodb://localhost:27017/fasttrack'); const jobs = await AppliedJob.find().sort({appliedAt:-1}).limit(5); console.log(jobs); process.exit(0);
